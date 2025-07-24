@@ -17,10 +17,10 @@ template<class T>
 class Vector {
 private:
     T* elems;
-    size_t sz;
-    size_t cap;
+    std::size_t sz;
+    std::size_t cap;
 
-    constexpr void new_reserve(size_t new_cap) {
+    constexpr void new_reserve(std::size_t new_cap) {
         if (new_cap > SIZE_MAX) throw std::length_error("Vector");
         T* new_elems = new T[new_cap];
         delete[] elems;
@@ -31,25 +31,25 @@ private:
 public:
     constexpr Vector() : elems(nullptr), sz(0), cap(0) {}
 
-    explicit Vector(size_t count) : sz(count) {
+    explicit Vector(std::size_t count) : sz(count) {
         new_reserve(count);
     }
 
-    constexpr Vector(size_t count, const T& value) : sz(count) {
+    constexpr Vector(std::size_t count, const T& value) : sz(count) {
         new_reserve(count);
-	for (const auto& elem : *this) elem = value;
+	for (T& elem : *this) elem = value;
     }
 
     template<class InputIt>
     requires (!std::is_integral_v<InputIt>)
     constexpr Vector(InputIt first, InputIt last) {
-        size_t count = std::distance(first, last);
+        std::size_t count = std::distance(first, last);
         new_reserve(count);
-        for (size_t i = 0; i < count; ++i) elems[i] = *(first++);
+        for (T& elem : *this) elem = *(first++);
         sz = count;
     }
 
-    constexpr Vector(const Vector& other) : elems(new T[other.cap]), sz(other.sz), cap(other.cap) { for (size_t i = 0; i < sz; ++i) elems[i] = other.elems[i]; }
+    constexpr Vector(const Vector& other) : elems(new T[other.cap]), sz(other.sz), cap(other.cap) { for (std::size_t i = 0; i < sz; ++i) elems[i] = other.elems[i]; }
 
     constexpr Vector(Vector&& other) noexcept : elems(other.elems), sz(other.sz), cap(other.cap) {
         other.elems = nullptr;
@@ -69,7 +69,7 @@ public:
             T* new_elems = nullptr;
             if (other.cap > 0) {
                 new_elems = new T[other.cap];
-                for (size_t i = 0; i < other.sz; ++i) new_elems[i] = other.elems[i];
+                for (std::size_t i = 0; i < other.sz; ++i) new_elems[i] = other.elems[i];
             }
             delete[] elems;
             elems = new_elems;
@@ -95,43 +95,43 @@ public:
     constexpr Vector& operator=(std::initializer_list<T> ilist) {
         sz = 0;
 	if (ilist.size() > cap) new_reserve(ilist.size());
-        for (const auto& value : ilist) elems[sz++] = T(value);
+        for (T& value : ilist) elems[sz++] = T(value);
         return *this;
     }
 
-    constexpr void assign(size_t count, const T& value) {
+    constexpr void assign(std::size_t count, const T& value) {
         if (count > cap) {
             delete[] elems;
             elems = new T[count];
             cap = count;
         }
-        for (size_t i = 0; i < count; ++i) elems[i] = value;
+        for (T& elem : *this) elem = value;
         sz = count;
     }
 
     template<class InputIt>
     requires (!std::is_integral_v<InputIt>)
     constexpr void assign(InputIt first, InputIt last) {
-        size_t count = std::distance(first, last);
+        std::size_t count = std::distance(first, last);
         if (count > cap) new_reserve(count);
-        for (size_t i = 0; i < count; ++i) elems[i] = *(first++);
+        for (T& elem : *this) elem = *(first++);
         sz = count;
     }
 
     constexpr void assign(std::initializer_list<T> ilist) { *this = Vector(ilist); }
 
-    constexpr T& at(size_t index) {
+    constexpr T& at(std::size_t index) {
         if (index >= sz) throw std::out_of_range("Vector");
         return elems[index];
     }
 
-    constexpr const T& at(size_t index) const {
+    constexpr const T& at(std::size_t index) const {
         if (index >= sz) throw std::out_of_range("Vector");
         return elems[index];
     }
 
-    constexpr T& operator[](size_t index) { return elems[index]; }
-    constexpr const T& operator[](size_t index) const { return elems[index]; }
+    constexpr T& operator[](std::size_t index) { return elems[index]; }
+    constexpr const T& operator[](std::size_t index) const { return elems[index]; }
 
     constexpr T& front() { return elems[0]; }
     constexpr const T& front() const { return elems[0]; }
@@ -159,25 +159,25 @@ public:
     constexpr std::reverse_iterator<const T*> crend() const noexcept { return std::reverse_iterator<const T*>(cbegin()); }
 
     constexpr bool empty() const noexcept { return sz == 0; }
-    constexpr size_t size() const noexcept { return std::distance(begin(), end()); }
-    constexpr size_t max_size() const noexcept { return sz; }
+    constexpr std::size_t size() const noexcept { return std::distance(begin(), end()); }
+    constexpr std::size_t max_size() const noexcept { return sz; }
 
-    constexpr void reserve(size_t new_cap) {
+    constexpr void reserve(std::size_t new_cap) {
         if (new_cap <= cap) return;
         if (new_cap > SIZE_MAX) throw std::length_error("Vector");
         T* new_elems = new T[new_cap];
-        for (size_t i = 0; i < sz; ++i) new_elems[i] = std::move(elems[i]);
+        for (std::size_t i = 0; i < sz; ++i) new_elems[i] = std::move(elems[i]);
         delete[] elems;
         elems = new_elems;
         cap = new_cap;
     }
 
-    constexpr size_t capacity() const noexcept { return cap; }
+    constexpr std::size_t capacity() const noexcept { return cap; }
     
     constexpr void shrink_to_fit() {
         if (cap != sz) {
             T* new_elems = new T[sz];
-            for (size_t i = 0; i < sz; ++i) new_elems[i] = std::move(elems[i]);
+            for (std::size_t i = 0; i < sz; ++i) new_elems[i] = std::move(elems[i]);
             delete[] elems;
             elems = new_elems;
             cap = sz;
@@ -185,33 +185,33 @@ public:
     }
 
     constexpr void clear() {
-        for (size_t i = 0; i < sz; ++i) elems[i].~T();
+        for (T& elem : *this) elem.~T();
         sz = 0;
     }
 
     constexpr T* insert(const T* pos, const T& value) {
-        size_t index = pos - elems;
+        std::size_t index = pos - elems;
         if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
-        for (size_t i = sz; i > index; --i) elems[i] = std::move(elems[i - 1]);
+        for (T* elem = end(); elem > begin(); --elem) elem = std::move(elem[-1]);
         elems[index] = value;
         ++sz;
         return elems + index;
     }
 
     constexpr T* insert(const T* pos, T&& value) {
-        size_t index = pos - elems;
+        std::size_t index = pos - elems;
         if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
-        for (size_t i = sz; i > index; --i) elems[i] = std::move(elems[i - 1]);
+        for (T* elem = end(); elem > begin(); --elem) *elem = std::move(elem[-1]);
         elems[index] = std::move(value);
         ++sz;
         return elems + index;
     }
 
-    constexpr T* insert(const T* pos, size_t count, const T& value) {
-        size_t index = pos - elems;
+    constexpr T* insert(const T* pos, std::size_t count, const T& value) {
+        std::size_t index = pos - elems;
         reserve(std::max(sz ? sz * VECTOR_GROW : 1, sz + count));
-        for (size_t i = sz; i > index; --i) elems[i + count - 1] = std::move(elems[i - 1]);
-        for (size_t i = 0; i < count; ++i) elems[index + i] = value;
+        for (T* elem = end(); elem > elems + index; --elem) elem[count - 1] = std::move(elem[-1]);
+        for (T* elem = begin(); elem < begin() + count; ++elem) elem[index] = value;
         sz += count;
         return elems + index;
     }
@@ -219,28 +219,24 @@ public:
     template<class InputIt>
     requires (!std::is_integral_v<InputIt>)
     constexpr T* insert(const T* pos, InputIt first, InputIt last) {
-        size_t index = pos - elems;
-        size_t count = std::distance(first, last);
+        std::size_t index = pos - elems;
+        std::size_t count = std::distance(first, last);
         reserve(std::max(sz ? sz * VECTOR_GROW : 1, sz + count));
-        for (size_t i = sz; i > index; --i) elems[i + count - 1] = std::move(elems[i - 1]);
-        for (size_t i = 0; i < count; ++i) elems[index + i] = *(first++);
+        for (T* elem = end(); elem > elems + index; --elem) elem[count - 1] = std::move(elem[-1]);
+        for (T* elem = begin(); elem < begin() + count; ++elem) elem[index] = *(first++);
         sz += count;
         return elems + index;
     }
 
-    constexpr T* insert(const T* pos, std::initializer_list<T> ilist) {
-        return insert(pos, ilist.begin(), ilist.end());
-    }
+    constexpr T* insert(const T* pos, std::initializer_list<T> ilist) { return insert(pos, ilist.begin(), ilist.end()); }
 
     template<class... Args>
     constexpr T* emplace(const T* pos, Args&&... args) {
-        size_t index = pos - elems;
-        if (sz == cap) {
-            reserve(sz ? sz * VECTOR_GROW : 1);
-        }
-        for (size_t i = sz; i > index; --i) {
-            new (elems + i) T(std::move(elems[i - 1]));
-            elems[i - 1].~T();
+        std::size_t index = pos - elems;
+        if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
+        for (T* elem = end(); elem > elems + index; --elem) {
+            new (elem) T(std::move(elem[-1]));
+            elem[-1].~T();
         }
         new (elems + index) T(std::forward<Args>(args)...);
         ++sz;
@@ -249,12 +245,12 @@ public:
  
     constexpr T* erase(const T* pos) {
         if (sz == 0) return elems;    
-        size_t index = pos - elems;
+        std::size_t index = pos - elems;
         if (index >= sz) return elems + sz;
         elems[index].~T();
-        for (size_t i = index; i < sz - 1; ++i) {
-            new (elems + i) T(std::move(elems[i + 1]));
-            elems[i + 1].~T();
+        for (T* elem = elems + index; elem < end(); ++elem) {
+            new (elem) T(std::move(elem[1]));
+            elem[1].~T();
         } 
         --sz;
         return elems + index;
@@ -262,16 +258,13 @@ public:
     
     constexpr T* erase(const T* first, const T* last) {
         if (first == last) return const_cast<T*>(first);
-        size_t start = first - elems;
-        size_t end = last - elems;
-        size_t count = end - start;
+        std::size_t start = first - elems;
+        std::size_t end = last - elems;
         if (start >= sz) return elems + sz;
         if (end > sz) end = sz;
-        count = end - start;
-        for (size_t i = start; i < end; ++i) {
-            elems[i].~T();
-        }
-        for (size_t i = end; i < sz; ++i) {
+        std::size_t count = end - start;
+        for (std::size_t i = start; i < end; ++i) elems[i].~T();
+        for (std::size_t i = end; i < sz; ++i) {
             new (elems + i - count) T(std::move(elems[i]));
             elems[i].~T();
         }
@@ -291,9 +284,7 @@ public:
 
     template<class... Args>
     constexpr T& emplace_back(Args&&... args) {
-        if (sz == cap) {
-            reserve(sz ? sz * VECTOR_GROW : 1);
-        }
+        if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
         new (elems + sz) T(std::forward<Args>(args)...);
         return elems[sz++];
     }
@@ -302,39 +293,27 @@ public:
         if (sz > 0) elems[--sz].~T();
     }
 
-    constexpr void resize(size_t new_size) {
-        if (new_size > cap) {
-            reserve(new_size);
-        }
+    constexpr void resize(std::size_t new_size) {
+        if (new_size > cap) reserve(new_size);
         if (new_size < sz) {
-            for (size_t i = new_size; i < sz; ++i) {
-                elems[i].~T();
-            }
+            for (T* elem = elems + new_size; elem < end(); ++elem) elem->~T();
         } else if (new_size > sz) {
-            for (size_t i = sz; i < new_size; ++i) {
-                new (elems + i) T();
-            }
+            for (T* elem = end(); elem < elems + new_size; ++elem) new (elem) T();
         }
         sz = new_size;
     }
     
-    constexpr void resize(size_t new_size, const T& value) {
-        if (new_size > cap) {
-            reserve(new_size);
-        }
-        if (new_size < sz) {
-            for (size_t i = new_size; i < sz; ++i) {
-                elems[i].~T();
-            }
+    constexpr void resize(std::size_t new_size, const T& value) {
+        if (new_size > cap) reserve(new_size);
+                if (new_size < sz) {
+            for (T* elem = elems + new_size; elem < end(); ++elem) elem->~T();
         } else if (new_size > sz) {
-            for (size_t i = sz; i < new_size; ++i) {
-                new (elems + i) T(value);
-            }
+            for (T* elem = end(); elem < elems + new_size; ++elem) new (elem) T(value);
         }
         sz = new_size;
     }
    
-   constexpr void swap(Vector& other) {
+    constexpr void swap(Vector& other) {
         std::swap(elems, other.elems);
         std::swap(sz, other.sz);
         std::swap(cap, other.cap);
