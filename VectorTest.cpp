@@ -118,6 +118,7 @@ void test_vector() {
     for (int i : v5) cout << i;
     cout << "\nReverse Iteration: ";
     for (auto i = v5.rbegin(); i < v5.rend(); ++i) cout << *i;
+    cout << "\n";
 }
 
 int main() {

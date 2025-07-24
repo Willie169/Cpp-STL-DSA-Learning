@@ -12,7 +12,7 @@
 #include <iterator>
 #include <algorithm>
 #include <type_traits>
-#include <memory>
+#include <cstdint>
 
 template<typename T>
 class Vector {
