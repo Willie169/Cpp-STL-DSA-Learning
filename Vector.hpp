@@ -175,6 +175,7 @@ public:
     }
 
     template<class InputIt>
+    requires (!std::is_integral_v<InputIt>)
     constexpr void assign(InputIt first, InputIt last) {
         size_t count = std::distance(first, last);
         if (count > cap) {
@@ -218,6 +219,7 @@ public:
     }
 
     template<class InputIt>
+    requires (!std::is_integral_v<InputIt>)
     constexpr T* insert(const T* pos, InputIt first, InputIt last) {
         size_t index = pos - elems;
         size_t count = std::distance(first, last);
