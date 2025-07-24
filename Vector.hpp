@@ -4,15 +4,14 @@
 #define VECTOR_GROW 2
 #endif
 
-#include <new>
-#include <utility>
 #include <cstddef>
+#include <cstdint>
 #include <stdexcept>
-#include <initializer_list>
 #include <iterator>
 #include <algorithm>
+#include <utility>
+#include <initializer_list>
 #include <type_traits>
-#include <cstdint>
 
 template<class T>
 class Vector {
@@ -43,7 +42,7 @@ public:
 
     template<class InputIt>
     requires (!std::is_integral_v<InputIt>)
-    constexpr Vector(InputIt first, InputIt last) const {
+    constexpr Vector(InputIt first, InputIt last) {
         size_t count = std::distance(first, last);
         new_reserve(count);
         for (size_t i = 0; i < count; ++i) elems[i] = *(first++);
@@ -119,9 +118,7 @@ public:
         sz = count;
     }
 
-    constexpr void assign(std::initializer_list<T> ilist) {
-        *this = Vector(ilist);
-    }
+    constexpr void assign(std::initializer_list<T> ilist) { *this = Vector(ilist); }
 
     constexpr T& at(size_t index) {
         if (index >= sz) throw std::out_of_range("Vector");
@@ -153,13 +150,13 @@ public:
     constexpr const T* end() const noexcept { return elems + sz; }
     constexpr const T* cend() const noexcept { return elems + sz; }
 
-    constexpr std::reverse_iterator<T*> noexcept rbegin() { return std::reverse_iterator<T*>(end()); }
-    constexpr std::reverse_iterator<const T*> noexcept rbegin() { return std::reverse_iterator<const T*>(end()); }
-    constexpr std::reverse_iterator<const T*> noexcept crbegin() { return std::reverse_iterator<const T*>(end()); }
+    constexpr std::reverse_iterator<T*> rbegin() noexcept { return std::reverse_iterator<T*>(end()); }
+    constexpr std::reverse_iterator<const T*> rbegin() const noexcept { return std::reverse_iterator<const T*>(cend()); }
+    constexpr std::reverse_iterator<const T*> crbegin() const noexcept { return std::reverse_iterator<const T*>(cend()); }
 
-    constexpr std::reverse_iterator<T*> noexcept rend() { return std::reverse_iterator<T*>(begin()); }
-    constexpr std::reverse_iterator<const T*> noexcept rend() { return std::reverse_iterator<const T*>(begin()); }
-    constexpr std::reverse_iterator<const T*> noexcept crend() { return std::reverse_iterator<const T*>(begin()); }
+    constexpr std::reverse_iterator<T*> rend() noexcept { return std::reverse_iterator<T*>(begin()); }
+    constexpr std::reverse_iterator<const T*> rend() const noexcept { return std::reverse_iterator<const T*>(cbegin()); }
+    constexpr std::reverse_iterator<const T*> crend() const noexcept { return std::reverse_iterator<const T*>(cbegin()); }
 
     constexpr bool empty() const noexcept { return sz == 0; }
     constexpr size_t size() const noexcept { return std::distance(begin(), end()); }
@@ -192,7 +189,7 @@ public:
         sz = 0;
     }
 
-     constexpr T* insert(const T* pos, const T& value) {
+    constexpr T* insert(const T* pos, const T& value) {
         size_t index = pos - elems;
         if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
         for (size_t i = sz; i > index; --i) elems[i] = std::move(elems[i - 1]);
