@@ -19,7 +19,7 @@ class Vector {
     std::size_t sz;
     std::size_t cap;
 
-    constexpr void _new_reserve(std::size_t new_cap) {
+    constexpr void __new_reserve(std::size_t new_cap) {
         if (new_cap > SIZE_MAX) throw std::length_error("Vector");
         T* new_elems = new T[new_cap];
         delete[] elems;
@@ -31,11 +31,11 @@ public:
     constexpr Vector() : elems(nullptr), sz(0), cap(0) {}
 
     explicit Vector(std::size_t count) : sz(count) {
-        _new_reserve(count);
+        __new_reserve(count);
     }
 
     constexpr Vector(std::size_t count, const T& value) : sz(count) {
-        _new_reserve(count);
+        __new_reserve(count);
 	for (T& elem : *this) elem = value;
     }
 
@@ -43,7 +43,7 @@ public:
     requires (!std::is_integral_v<InputIt>)
     constexpr Vector(InputIt first, InputIt last) {
         std::size_t count = std::distance(first, last);
-        _new_reserve(count);
+        __new_reserve(count);
         for (T& elem : *this) elem = *(first++);
         sz = count;
     }
@@ -57,7 +57,7 @@ public:
     }
 
     Vector(std::initializer_list<T> ilist) : Vector() {
-        _new_reserve(ilist.size());
+        __new_reserve(ilist.size());
         for (const auto& value : ilist) elems[sz++] = T(value);
     }
 
@@ -93,7 +93,7 @@ public:
 
     constexpr Vector& operator=(std::initializer_list<T> ilist) {
         sz = 0;
-	if (ilist.size() > cap) _new_reserve(ilist.size());
+	if (ilist.size() > cap) __new_reserve(ilist.size());
         for (T& value : ilist) elems[sz++] = T(value);
         return *this;
     }
@@ -112,7 +112,7 @@ public:
     requires (!std::is_integral_v<InputIt>)
     constexpr void assign(InputIt first, InputIt last) {
         std::size_t count = std::distance(first, last);
-        if (count > cap) _new_reserve(count);
+        if (count > cap) __new_reserve(count);
         for (T& elem : *this) elem = *(first++);
         sz = count;
     }
