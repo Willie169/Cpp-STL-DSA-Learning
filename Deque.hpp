@@ -14,17 +14,17 @@ public:
     explicit constexpr Deque(std::size_t count) {
         sz = (count + __buf_size - 1) / __buf_size + 2;
         map = new T*[sz];
-    sb = 1;
-    eb = sz - 2;
-    for (std::size_t i = 0; i < sz; ++i) map[i] = (i < sb || i > eb) ? nullptr : new T[__buf_size];
-    si = 0;
-    ei = count % __buf_size;
-    if (ei == 0 && count != 0) ei = __buf_size;
-        for (std::size_t i = sb; i <= eb; ++i) {
-        std::size_t s = (i == sb) ? si : 0;
-        std::size_t e = (i == eb) ? ei : __buf_size;
-        for (std::size_t j = s; j < e; ++j) new (&map[i][j]) T();
-    }
+        sb = 1;
+        eb = sz - 2;
+        for (std::size_t i = 0; i < sz; ++i) map[i] = (i < sb || i > eb) ? nullptr : new T[__buf_size];
+        si = 0;
+        ei = count % __buf_size;
+        if (ei == 0 && count != 0) ei = __buf_size;
+            for (std::size_t i = sb; i <= eb; ++i) {
+            std::size_t s = (i == sb) ? si : 0;
+            std::size_t e = (i == eb) ? ei : __buf_size;
+            for (std::size_t j = s; j < e; ++j) new (&map[i][j]) T();
+        }
     }
 
     constexpr Deque(std::size_t count, const T& value) {
@@ -163,6 +163,92 @@ public:
     }
 
    Deque& operator=(std::initializer_list<T> ilist) {
+        for (std::size_t i = sb; i <= eb; ++i) {
+            if (map[i]) {
+                std::size_t start = (i == sb) ? si : 0;
+                std::size_t end   = (i == eb) ? ei : __buf_size;
+                for (std::size_t j = start; j < end; ++j) map[i][j].~T();
+                delete[] map[i];
+            }
+        }
+        delete[] map;
+        sz = (ilist.size() + __buf_size - 1) / __buf_size + 2;
+        map = new T*[sz];
+        sb = 1;
+        eb = sz - 2;
+        for (std::size_t i = 0; i < sz; ++i) map[i] = (i < sb || i > eb) ? nullptr : new T[__buf_size];
+        si = 0;
+        ei = ilist.size() % __buf_size;
+        if (ei == 0 && ilist.size() != 0) ei = __buf_size;
+    std::size_t k = 0;
+        for (std::size_t i = sb; i <= eb; ++i) {
+            std::size_t s = (i == sb) ? si : 0;
+            std::size_t e = (i == eb) ? ei : __buf_size;
+            for (std::size_t j = s; j < e; ++j) new (&map[i][j]) T(ilist[k++]);
+        }
+    }
+
+   Deque(std::size_t count, const T& value) {
+        for (std::size_t i = sb; i <= eb; ++i) {
+            if (map[i]) {
+                std::size_t start = (i == sb) ? si : 0;
+                std::size_t end   = (i == eb) ? ei : __buf_size;
+                for (std::size_t j = start; j < end; ++j) map[i][j].~T();
+                delete[] map[i];
+            }
+        }
+        delete[] map;
+        sz = (count + __buf_size - 1) / __buf_size + 2;
+        map = new T*[sz];
+        sb = 1;
+        eb = sz - 2;
+        for (std::size_t i = 0; i < sz; ++i) map[i] = (i < sb || i > eb) ? nullptr : new T[__buf_size];
+        si = 0;
+        ei = count % __buf_size;
+        if (ei == 0 && count != 0) ei = __buf_size;
+        for (std::size_t i = sb; i <= eb; ++i) {
+            std::size_t s = (i == sb) ? si : 0;
+            std::size_t e = (i == eb) ? ei : __buf_size;
+            for (std::size_t j = s; j < e; ++j) new (&map[i][j]) T(value);
+        }
+    }
+
+    template<class InputIt>
+    requires (!std::is_integral_v<InputIt>)
+    Deque(InputIt first, InputIt last) {
+        for (std::size_t i = sb; i <= eb; ++i) {
+            if (map[i]) {
+                std::size_t start = (i == sb) ? si : 0;
+                std::size_t end   = (i == eb) ? ei : __buf_size;
+                for (std::size_t j = start; j < end; ++j) map[i][j].~T();
+                delete[] map[i];
+            }
+        }
+        delete[] map;
+        std::size_t count = std::distance(first, last);
+        sz = (count + __buf_size - 1) / __buf_size + 2;
+        map = new T*[sz];
+        for (std::size_t i = 0; i < sz; ++i) map[i] = (i < sb || i > eb) ? nullptr : new T[__buf_size];
+    si = 0;
+        ei = count % __buf_size;
+        if (ei == 0 && count != 0) ei = __buf_size;
+        for (std::size_t i = sb; i <= eb; ++i) {
+            std::size_t s = (i == sb) ? si : 0;
+            std::size_t e = (i == eb) ? ei : __buf_size;
+            for (std::size_t j = s; j < e; ++j) new (&map[i][j]) T(*(first++));
+        }
+    }
+
+    Deque(std::initializer_list<T> ilist) {
+        for (std::size_t i = sb; i <= eb; ++i) {
+            if (map[i]) {
+                std::size_t start = (i == sb) ? si : 0;
+                std::size_t end   = (i == eb) ? ei : __buf_size;
+                for (std::size_t j = start; j < end; ++j) map[i][j].~T();
+                delete[] map[i];
+            }
+        }
+        delete[] map;
         sz = (ilist.size() + __buf_size - 1) / __buf_size + 2;
         map = new T*[sz];
         sb = 1;
