@@ -8,6 +8,11 @@
 
 template<class T, std::size_t N>
 struct Array {
+    using iterator = T*;
+    using const_iterator = const T*;
+    using reverse_iterator = std::reverse_iterator<Iterator>;
+    using const_reverse_iterator = std::reverse_iterator<const iterator>;
+
     T elems[N == 0 ? 1 : N];
 
     constexpr T& at(std::size_t index) {

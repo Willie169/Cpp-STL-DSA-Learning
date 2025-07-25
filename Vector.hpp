@@ -28,6 +28,11 @@ class Vector {
     }
 
 public:
+    using iterator = T*;
+    using const_iterator = const T*;
+    using reverse_iterator = std::reverse_iterator<Iterator>;
+    using const_reverse_iterator = std::reverse_iterator<const iterator>;
+
     constexpr Vector() : elems(nullptr), sz(0), cap(0) {}
 
     explicit Vector(std::size_t count) : sz(count) {
