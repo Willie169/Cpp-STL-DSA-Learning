@@ -68,3 +68,4 @@ struct Array {
 
     constexpr void swap(Array& other) noexcept(std::is_nothrow_swappable_v<T>) { for (std::size_t i = 0; i < N; ++i) std::swap(elems[i], other.elems[i]); }
 };
+
