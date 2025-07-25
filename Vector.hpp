@@ -36,7 +36,7 @@ public:
 
     constexpr Vector(std::size_t count, const T& value) : sz(count) {
         __new_reserve(count);
-	for (T& elem : *this) elem = value;
+	    for (T& elem : *this) elem = value;
     }
 
     template<class InputIt>
@@ -93,7 +93,7 @@ public:
 
     constexpr Vector& operator=(std::initializer_list<T> ilist) {
         sz = 0;
-	if (ilist.size() > cap) __new_reserve(ilist.size());
+	    if (ilist.size() > cap) __new_reserve(ilist.size());
         for (T& value : ilist) elems[sz++] = T(value);
         return *this;
     }
