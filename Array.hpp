@@ -7,11 +7,9 @@
 #include <utility>
 
 template<class T, std::size_t N>
-class Array {
-private:
+struct Array {
     T elems[N == 0 ? 1 : N];
 
-public:
     constexpr T& at(std::size_t index) {
         if (index >= N) throw std::out_of_range("Array");
         return elems[index];
@@ -54,7 +52,7 @@ public:
     constexpr std::size_t size() const noexcept { return N; }
     constexpr std::size_t max_size() const noexcept { return N; }
 
-    constexpr void fill(const T& value) { for (const T& elem : *this) elem = value; }
+    constexpr void fill(const T& value) { for (T& elem : *this) elem = value; }
 
     constexpr void swap(Array& other) noexcept(std::is_nothrow_swappable_v<T>) { for (std::size_t i = 0; i < N; ++i) std::swap(elems[i], other.elems[i]); }
 };
