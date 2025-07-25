@@ -8,6 +8,13 @@
 
 template<class T, std::size_t N>
 struct Array {
+    using value_type = T;
+    using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
+    using reference = T&;
+    using const reference = const T&;
+    using pointer = T*;
+    using const pointer = const T*;
     using iterator = T*;
     using const_iterator = const T*;
     using reverse_iterator = std::reverse_iterator<Iterator>;
@@ -61,4 +68,3 @@ struct Array {
 
     constexpr void swap(Array& other) noexcept(std::is_nothrow_swappable_v<T>) { for (std::size_t i = 0; i < N; ++i) std::swap(elems[i], other.elems[i]); }
 };
-

@@ -84,6 +84,13 @@ class Deque {
     static const size_t __buf_size = sizeof(T) < 512 ? size_t(512 / sizeof(T)) : size_t(1);
 
 public:
+    using value_type = T;
+    using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
+    using reference = T&;
+    using const reference = const T&;
+    using pointer = T*;
+    using const pointer = const T*;
     using iterator = DequeIterator<T>;
     using const_iterator = DequeIterator<const T>;
     using reverse_iterator = std::reverse_iterator<Iterator>;
@@ -126,7 +133,7 @@ public:
     template<class InputIt>
     requires (!std::is_integral_v<InputIt>)
     Deque(InputIt first, InputIt last) {
-        std::size_t count = std::distance(first, last);
+        std::ptrdiff_t count = std::distance(first, last);
         map_sz = (count + __buf_size - 1) / __buf_size + 2;
         map = new T*[map_sz];
         for (std::size_t i = 0; i < map_sz; ++i) map[i] = (i < sb || i > eb) ? nullptr : new T[__buf_size];
@@ -305,7 +312,7 @@ public:
             }
         }
         delete[] map;
-        std::size_t count = std::distance(first, last);
+        std::ptrdiff_t count = std::distance(first, last);
         map_sz = (count + __buf_size - 1) / __buf_size + 2;
         map = new T*[map_sz];
         for (std::size_t i = 0; i < map_sz; ++i) map[i] = (i < sb || i > eb) ? nullptr : new T[__buf_size];
