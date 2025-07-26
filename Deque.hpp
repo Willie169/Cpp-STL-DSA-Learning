@@ -6,14 +6,14 @@
 #include <initializer_list>
 #include <type_traits>
 
-template<class T, Deque::size_type __buf_size>
+template<class T, std::size_t __buf_size>
 requires std::random_access_iterator<T*>
 class DequeIterator {
     T** map;
-    Deque::size_type block, index;
+    std::size_t block, index;
 
 public:
-    DequeIterator(T** map, Deque::size_type block, Deque::size_type index) : map(map), block(block), index(index) {}
+    DequeIterator(T** map, std::size_t block, std::size_t index) : map(map), block(block), index(index) {}
 
     T& operator*() const { return map[block][index]; }
     T* operator->() const { return &map[block][index]; }
@@ -48,28 +48,28 @@ public:
         return tmp;
     }
 
-    DequeIterator& operator+=(Deque::difference_type n) {
-        Deque::difference_type pos = block * __buf_size + index + n;
+    DequeIterator& operator+=(std::ptrdiff_t n) {
+        std::ptrdiff_t pos = block * __buf_size + index + n;
         block = pos / __buf_size;
         index = pos % __buf_size;
         return *this;
     }
 
-    DequeIterator operator+(Deque::difference_type n) const {
+    DequeIterator operator+(std::ptrdiff_t n) const {
         DequeIterator tmp = *this;
         return tmp += n;
     }
 
-    DequeIterator& operator-=(Deque::difference_type n) { return *this += -n; }
+    DequeIterator& operator-=(std::ptrdiff_t n) { return *this += -n; }
 
-    DequeIterator operator-(Deque::difference_type n) const {
+    DequeIterator operator-(std::ptrdiff_t n) const {
         DequeIterator tmp = *this;
         return tmp -= n;
     }
 
-    Deque::difference_type operator-(const DequeIterator& other) const { return ((block * __buf_size + index) - (other.block * __buf_size + other.index)); }
+    std::ptrdiff_t operator-(const DequeIterator& other) const { return ((block * __buf_size + index) - (other.block * __buf_size + other.index)); }
 
-    T& operator[](Deque::difference_type n) const { return *(*this + n); }
+    T& operator[](std::ptrdiff_t n) const { return *(*this + n); }
 
     bool operator==(const DequeIterator& rhs) const { return block == rhs.block && index == rhs.index; }
     bool operator!=(const DequeIterator& rhs) const { return !(*this == rhs); }
@@ -91,15 +91,15 @@ public:
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
     using reference = T&;
-    using const reference = const T&;
+    using const_reference = const T&;
     using pointer = T*;
-    using const pointer = const T*;
+    using const_pointer = const T*;
     using iterator = DequeIterator<T, __buf_size>;
-    using const_iterator = DequeIterator<const T, __bufsize>;
+    using const_iterator = DequeIterator<const T, __buf_size>;
     using reverse_iterator = std::reverse_iterator<Iterator>;
     using const_reverse_iterator = std::reverse_iterator<const iterator>;
     
-    Deque() : map(nullptr), map_sz(0), sb(0), si(0), eb(0), ei(0);
+    Deque() : map(nullptr), map_sz(0), sb(0), si(0), eb(0), ei(0) {}
 
     explicit Deque(std::size_t count) {
         map_sz = (count + __buf_size - 1) / __buf_size + 2;
@@ -385,11 +385,11 @@ public:
         return map[block][index];
     }
 
-    T& front() { return *this[0]; }
-    const T& front() { return *this[0]; }
+    T& front() { return (*this)[0]; }
+    const T& front() { return (*this)[0]; }
 
-    T& back() { return *this[(eb - sb) * __buf_size + ei - si -1]; }
-    const T& back() { return *this[(eb - sb) * __buf_size + ei - si -1]; }
+    T& back() { return (*this)[(eb - sb) * __buf_size + ei - si -1]; }
+    const T& back() { return (*this)[(eb - sb) * __buf_size + ei - si -1]; }
 
     iterator begin() { return iterator(map, sb, si); }
     const_iterator begin() const { return const_iterator(map, sb, si); }
@@ -408,7 +408,9 @@ public:
     const_reverse_iterator crend() const { return const_reverse_iterator(map, sb, si); }
 
     bool empty() const noexcept { return size() == 0; }
-    std::size_t size() const noexcept { return std::distance(begin(), end()); }
+    std::size_t size() const noexcept { return (eb - sb) * __buf_size + (ei - si); }
+    constexpr std::size_t size() const noexcept {
+
     std::size_t max_size() const noexcept { return std::numeric_limits<difference_type>::max(); }
 
     void shrink_to_fit() {
