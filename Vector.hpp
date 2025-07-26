@@ -54,7 +54,7 @@ public:
     template<class InputIt>
     requires (!std::is_integral_v<InputIt>)
     constexpr Vector(InputIt first, InputIt last) {
-        std::size_t count = std::distance(first, last);
+        std::size_t count = static_cast<std::size_t>(std::distance(first, last));
         __new_reserve(count);
         for (T& elem : *this) elem = *(first++);
         sz = count;
@@ -73,7 +73,10 @@ public:
         for (const auto& value : ilist) elems[sz++] = T(value);
     }
 
-    constexpr ~Vector() { delete[] elems; }
+    constexpr ~Vector() {
+        if (!elems) return;
+        delete[] elems;
+    }
 
     constexpr Vector& operator=(const Vector& other) {
         if (this != &other) {
@@ -123,7 +126,7 @@ public:
     template<class InputIt>
     requires (!std::is_integral_v<InputIt>)
     constexpr void assign(InputIt first, InputIt last) {
-        std::size_t count = std::distance(first, last);
+        std::size_t count = static_cast<std::size_t>(std::distance(first, last));
         if (count > cap) __new_reserve(count);
         for (T& elem : *this) elem = *(first++);
         sz = count;
@@ -170,7 +173,7 @@ public:
     constexpr std::reverse_iterator<const T*> crend() const noexcept { return std::reverse_iterator<const T*>(cbegin()); }
 
     constexpr bool empty() const noexcept { return sz == 0; }
-    constexpr std::size_t size() const noexcept { return std::distance(begin(), end()); }
+    constexpr std::size_t size() const noexcept { return sz; }
     constexpr std::size_t max_size() const noexcept { return sz; }
 
     constexpr void reserve(std::size_t new_cap) {
@@ -196,6 +199,7 @@ public:
     }
 
     constexpr void clear() {
+        if (empty() || !elems) return;
         for (T& elem : *this) elem.~T();
         sz = 0;
     }
@@ -231,7 +235,7 @@ public:
     requires (!std::is_integral_v<InputIt>)
     constexpr T* insert(const T* pos, InputIt first, InputIt last) {
         std::size_t index = pos - elems;
-        std::size_t count = std::distance(first, last);
+        std::size_t count = static_cast<std::size_t>(std::distance(first, last));
         reserve(std::max(sz ? sz * VECTOR_GROW : 1, sz + count));
         for (T* elem = end(); elem > elems + index; --elem) elem[count - 1] = std::move(elem[-1]);
         for (T* elem = begin(); elem < begin() + count; ++elem) elem[index] = *(first++);
