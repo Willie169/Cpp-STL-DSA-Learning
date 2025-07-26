@@ -410,8 +410,6 @@ public:
 
     bool empty() const noexcept { return size() == 0; }
     std::size_t size() const noexcept { return (eb - sb) * __buf_size + (ei - si); }
-    constexpr std::size_t size() const noexcept {
-
     std::size_t max_size() const noexcept { return std::numeric_limits<difference_type>::max(); }
 
     void shrink_to_fit() {
