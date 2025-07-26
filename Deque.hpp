@@ -2,21 +2,20 @@
 
 #include <cstddef>
 
-template<class T>
+template<class T, Deque::size_type __buf_size>
 requires std::random_access_iterator<T*>
 class DequeIterator {
     T** map;
-    std::size_t block, index;
-    static constexpr std::size_t buf_size = __buf_size;
+    Deque::size_type block, index;
 
 public:
-    DequeIterator(T** map, std::size_t block, std::size_t index) : map(map), block(block), index(index) {}
+    DequeIterator(T** map, Deque::size_type block, Deque::size_type index) : map(map), block(block), index(index) {}
 
     T& operator*() const { return map[block][index]; }
     T* operator->() const { return &map[block][index]; }
 
     DequeIterator& operator++() {
-        if (++index == buf_size) {
+        if (++index == __buf_size) {
             ++block;
             index = 0;
        }
@@ -32,7 +31,7 @@ public:
     DequeIterator& operator--() {
         if (index == 0) {
             --block;
-            index = buf_size - 1;
+            index = __buf_size - 1;
         } else {
             --index;
         }
@@ -45,28 +44,28 @@ public:
         return tmp;
     }
 
-    DequeIterator& operator+=(difference_type n) {
-        difference_type pos = block * buf_size + index + n;
-        block = pos / buf_size;
-        index = pos % buf_size;
+    DequeIterator& operator+=(Deque::difference_type n) {
+        Deque::difference_type pos = block * __buf_size + index + n;
+        block = pos / __buf_size;
+        index = pos % __buf_size;
         return *this;
     }
 
-    DequeIterator operator+(difference_type n) const {
+    DequeIterator operator+(Deque::difference_type n) const {
         DequeIterator tmp = *this;
         return tmp += n;
     }
 
-    DequeIterator& operator-=(difference_type n) { return *this += -n; }
+    DequeIterator& operator-=(Deque::difference_type n) { return *this += -n; }
 
-    DequeIterator operator-(difference_type n) const {
+    DequeIterator operator-(Deque::difference_type n) const {
         DequeIterator tmp = *this;
         return tmp -= n;
     }
 
-    std::ptrdiff_t operator-(const DequeIterator& other) const { return ((block * buf_size + index) - (other.block * buf_size + other.index)); }
+    Deque::difference_type operator-(const DequeIterator& other) const { return ((block * __buf_size + index) - (other.block * __buf_size + other.index)); }
 
-    T& operator[](difference_type n) const { return *(*this + n); }
+    T& operator[](Deque::difference_type n) const { return *(*this + n); }
 
     bool operator==(const DequeIterator& rhs) const { return block == rhs.block && index == rhs.index; }
     bool operator!=(const DequeIterator& rhs) const { return !(*this == rhs); }
@@ -91,8 +90,8 @@ public:
     using const reference = const T&;
     using pointer = T*;
     using const pointer = const T*;
-    using iterator = DequeIterator<T>;
-    using const_iterator = DequeIterator<const T>;
+    using iterator = DequeIterator<T, __buf_size>;
+    using const_iterator = DequeIterator<const T, __bufsize>;
     using reverse_iterator = std::reverse_iterator<Iterator>;
     using const_reverse_iterator = std::reverse_iterator<const iterator>;
     
@@ -403,6 +402,22 @@ public:
     reverse_iterator rend() { return reverse_iterator(map, sb, si); }
     const_reverse_iterator rend() const { return const_reverse_iterator(map, sb, si); }
     const_reverse_iterator crend() const { return const_reverse_iterator(map, sb, si); }
+
+    constexpr bool empty() const noexcept { return size() == 0; }
+    constexpr std::size_t size() const noexcept { return std::distance(begin(), end()); }
+    constexpr std::size_t max_size() const noexcept { return std::numeric_limits<difference_type>::max(); }
+
+    void shrink_to_fit() {
+       if (sb != 0) {
+           for (T** i = map + 1; i <= map + sb; ++i) delete[] i - 1;
+           map_sz -= sb;
+           sb = 0;
+       }
+       if (eb != map_sz - 1) {
+           for (T** i = map + map_sz - 2; i >= map + eb; --i) delete[] i + 1;
+           map_sz = eb + 1;
+       }
+    }
 
 };
 
