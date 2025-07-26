@@ -54,7 +54,7 @@ public:
     template<class InputIt>
     requires (!std::is_integral_v<InputIt>)
     constexpr Vector(InputIt first, InputIt last) {
-        std::ptrdiff_t count = std::distance(first, last);
+        std::size_t count = std::distance(first, last);
         __new_reserve(count);
         for (T& elem : *this) elem = *(first++);
         sz = count;
@@ -123,7 +123,7 @@ public:
     template<class InputIt>
     requires (!std::is_integral_v<InputIt>)
     constexpr void assign(InputIt first, InputIt last) {
-        std::ptrdiff_t count = std::distance(first, last);
+        std::size_t count = std::distance(first, last);
         if (count > cap) __new_reserve(count);
         for (T& elem : *this) elem = *(first++);
         sz = count;
