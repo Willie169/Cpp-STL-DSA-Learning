@@ -95,9 +95,9 @@ public:
     using reverse_iterator = std::reverse_iterator<Iterator>;
     using const_reverse_iterator = std::reverse_iterator<const iterator>;
     
-    constexpr Deque() : map(nullptr), map_sz(0), sb(0), si(0), eb(0), ei(0);
+    Deque() : map(nullptr), map_sz(0), sb(0), si(0), eb(0), ei(0);
 
-    explicit constexpr Deque(std::size_t count) {
+    explicit Deque(std::size_t count) {
         map_sz = (count + __buf_size - 1) / __buf_size + 2;
         map = new T*[map_sz];
         sb = 1;
@@ -113,7 +113,7 @@ public:
         }
     }
 
-    constexpr Deque(std::size_t count, const T& value) {
+    Deque(std::size_t count, const T& value) {
         map_sz = (count + __buf_size - 1) / __buf_size + 2;
         map = new T*[map_sz];
         sb = 1;
@@ -403,20 +403,28 @@ public:
     const_reverse_iterator rend() const { return const_reverse_iterator(map, sb, si); }
     const_reverse_iterator crend() const { return const_reverse_iterator(map, sb, si); }
 
-    constexpr bool empty() const noexcept { return size() == 0; }
-    constexpr std::size_t size() const noexcept { return std::distance(begin(), end()); }
-    constexpr std::size_t max_size() const noexcept { return std::numeric_limits<difference_type>::max(); }
+    bool empty() const noexcept { return size() == 0; }
+    std::size_t size() const noexcept { return std::distance(begin(), end()); }
+    std::size_t max_size() const noexcept { return std::numeric_limits<difference_type>::max(); }
 
     void shrink_to_fit() {
        if (sb != 0) {
-           for (T** i = map + 1; i <= map + sb; ++i) delete[] i - 1;
+           for (T** i = map + 1; i <= map + sb; ++i) delete[] (i - 1);
+           map = map + sb;
            map_sz -= sb;
+           eb -= sb;
            sb = 0;
        }
        if (eb != map_sz - 1) {
-           for (T** i = map + map_sz - 2; i >= map + eb; --i) delete[] i + 1;
+           for (T** i = map + map_sz - 2; i >= map + eb; --i) delete[] (i + 1);
            map_sz = eb + 1;
        }
+    }
+
+    void clear() noexcept {
+        for (T** i = map + sb; i <= map + eb; ++i) {
+            for (T* j = i[0]; j < i[__buf_size]; ++j) delete[] j;
+        }
     }
 
 };
