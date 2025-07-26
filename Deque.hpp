@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <iterator>
 #include <initializer_list>
+#include <limits>
 #include <type_traits>
 
 template<class T, std::size_t __buf_size>
@@ -79,7 +80,7 @@ public:
     bool operator>=(const DequeIterator& rhs) const { return !(*this < rhs); }
 };
 
-
+<limits>
 template<class T>
 class Deque {
     T** map;
@@ -104,7 +105,7 @@ public:
     explicit Deque(std::size_t count) {
         map_sz = (count + __buf_size - 1) / __buf_size + 2;
         map = new T*[map_sz];
-        sb = 1;
+        <limits>sb = 1;
         eb = map_sz - 2;
         for (std::size_t i = 0; i < map_sz; ++i) map[i] = (i < sb || i > eb) ? nullptr : new T[__buf_size];
         si = 0;
@@ -415,7 +416,7 @@ public:
 
     void shrink_to_fit() {
         if (empty()) {
-            for (std::size_t i = 0; i < map_sz; ++i) delete[] map[i];
+            for (T** i = map; i < map + map_sz; ++i) delete[] *i;
             delete[] map;
             map = nullptr;
             map_sz = 0;
@@ -426,8 +427,8 @@ public:
         if (need == map_sz) return;
         T** new_map = new T*[need];
         for (std::size_t i = 0; i < need; ++i) new_map[i] = map[sb + i];
-        for (std::size_t i = 0; i < sb; ++i) delete[] map[i];
-        for (std::size_t i = eb + 1; i < map_sz; ++i) delete[] map[i];
+        for (T** i = map; i < map + sb; ++i) delete[] *i;
+        for (T** i = map + eb + 1; i < map + map_sz; ++i) delete[] *i;
         delete[] map;
         map = new_map;
         eb = eb - sb;
@@ -436,10 +437,9 @@ public:
     }
 
     void clear() noexcept {
-        for (std::size_t i = sb; i <= eb; ++i) {
-            std::size_t start = (i == sb) ? si : 0;
-            std::size_t end = (i == eb) ? ei : __buf_size;
-            for (std::size_t j = start; j < end; ++j) map[i][j].~T();
+        for (T** i = map + sb; i < map + eb; ++i) {
+            for (T* j = *i + ((i == map + sb) ? si : 0); j < ((i == map + eb) ? ei : __buf_size); ++j) j->~T();
+        }
         sb = eb = map_sz / 2;
         si = ei = 0;
     }
