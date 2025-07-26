@@ -1,6 +1,10 @@
 #pragma once
 
 #include <cstddef>
+#include <stdexcept>
+#include <iterator>
+#include <initializer_list>
+#include <type_traits>
 
 template<class T, Deque::size_type __buf_size>
 requires std::random_access_iterator<T*>
