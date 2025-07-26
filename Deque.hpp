@@ -414,23 +414,34 @@ public:
     std::size_t max_size() const noexcept { return std::numeric_limits<difference_type>::max(); }
 
     void shrink_to_fit() {
-       if (sb != 0) {
-           for (T** i = map + 1; i <= map + sb; ++i) delete[] (i - 1);
-           map = map + sb;
-           map_sz -= sb;
-           eb -= sb;
-           sb = 0;
-       }
-       if (eb != map_sz - 1) {
-           for (T** i = map + map_sz - 2; i >= map + eb; --i) delete[] (i + 1);
-           map_sz = eb + 1;
-       }
+        if (empty()) {
+            for (std::size_t i = 0; i < map_sz; ++i) delete[] map[i];
+            delete[] map;
+            map = nullptr;
+            map_sz = 0;
+            sb = si = eb = ei = 0;
+            return;
+        }    
+        std::size_t need = eb - sb + 1;
+        if (need == map_sz) return;
+        T** new_map = new T*[need];
+        for (std::size_t i = 0; i < need; ++i) new_map[i] = map[sb + i];
+        for (std::size_t i = 0; i < sb; ++i) delete[] map[i];
+        for (std::size_t i = eb + 1; i < map_sz; ++i) delete[] map[i];
+        delete[] map;
+        map = new_map;
+        eb = eb - sb;
+        sb = 0;
+        map_sz = need;
     }
 
     void clear() noexcept {
-        for (T** i = map + sb; i <= map + eb; ++i) {
-            for (T* j = i[0]; j < i[__buf_size]; ++j) delete[] j;
-        }
+        for (std::size_t i = sb; i <= eb; ++i) {
+            std::size_t start = (i == sb) ? si : 0;
+            std::size_t end = (i == eb) ? ei : __buf_size;
+            for (std::size_t j = start; j < end; ++j) map[i][j].~T();
+        sb = eb = map_sz / 2;
+        si = ei = 0;
     }
 
 };
