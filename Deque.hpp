@@ -99,7 +99,7 @@ public:
     using iterator = DequeIterator<T, __buf_size>;
     using const_iterator = DequeIterator<const T, __buf_size>;
     using reverse_iterator = std::reverse_iterator<iterator>;
-    using const_reverse_iterator = std::reverse_iterator<const iterator>;
+    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
     
     Deque() : map(nullptr), map_sz(0), sb(0), si(0), eb(0), ei(0) {}
 

@@ -37,8 +37,8 @@ public:
     using const_pointer = const T*;
     using iterator = T*;
     using const_iterator = const T*;
-    using reverse_iterator = std::reverse_iterator<Iterator>;
-    using const_reverse_iterator = std::reverse_iterator<const iterator>;
+    using reverse_iterator = std::reverse_iterator<iterator>;
+    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
     constexpr Vector() : elems(nullptr), sz(0), cap(0) {}
 
