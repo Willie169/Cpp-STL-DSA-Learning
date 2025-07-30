@@ -12,6 +12,8 @@
 #include <utility>
 #include <initializer_list>
 #include <type_traits>
+#include <memory> 
+#include <utility>
 
 template<class T>
 class Vector {
@@ -59,13 +61,9 @@ public:
         sz = count;
     }
 
-    constexpr Vector(const Vector& other) : elems(new T[other.cap]), sz(other.sz), cap(other.cap) { for (std::size_t i = 0; i < sz; ++i) elems[i] = other.elems[i]; }
+    constexpr Vector(const Vector& other) : elems(static_cast<T*>(operator new[](other.cap * sizeof(T)))), sz(other.sz), cap(other.cap) { std::uninitialized_copy(other.elems, other.elems + sz, elems); }
 
-    constexpr Vector(Vector&& other) noexcept : elems(other.elems), sz(other.sz), cap(other.cap) {
-        other.elems = nullptr;
-        other.sz = 0;
-        other.cap = 0;
-    }
+    constexpr Vector(Vector&& other) noexcept : elems(std::exchange(other.elems, nullptr)), sz(std::exchange(other.sz, 0)), cap(std::exchange(other.cap, 0)) {}
 
     Vector(std::initializer_list<T> ilist) : Vector() {
         __new_reserve(ilist.size());
@@ -79,28 +77,18 @@ public:
 
     constexpr Vector& operator=(const Vector& other) {
         if (this != &other) {
-            T* new_elems = nullptr;
-            if (other.cap > 0) {
-                new_elems = new T[other.cap];
-                for (std::size_t i = 0; i < other.sz; ++i) new_elems[i] = other.elems[i];
-            }
-            delete[] elems;
-            elems = new_elems;
-            sz = other.sz;
-            cap = other.cap;
+            Vector tmp(other);
+            swap(tmp;)
         }
         return *this;
     }
 
-    constexpr Vector& operator=(Vector&& other) {
+    constexpr Vector& operator=(Vector&& other) noexcept {
         if (this != &other) {
             delete[] elems;
-            elems = other.elems;
-            sz = other.sz;
-            cap = other.cap;
-            other.elems = nullptr;
-            other.sz = 0;
-            other.cap = 0;
+            elems = std::exchange(other.elems, nullptr);
+            sz = std::exchange(other.sz, 0);
+            cap = std::exchange(other.cap, 0);
         }
         return *this;
     }
