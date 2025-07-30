@@ -145,8 +145,7 @@ public:
         }
     }
 
-    template<class InputIt>
-    requires (!std::is_integral_v<InputIt>)
+    template<std::input_iterator InputIt>
     Deque(InputIt first, InputIt last) {
         std::size_t count = static_cast<std::size_t>(std::distance(first, last));
         if (count == 0) {
@@ -359,7 +358,7 @@ public:
     const_reverse_iterator rend() const { return const_reverse_iterator(cbegin()); }
     const_reverse_iterator crend() const { return const_reverse_iterator(cbegin()); }
 
-    bool empty() const noexcept { return size() == 0; }
+%s/template<class InputIt>\n    requires (!std::is_integral_v<InputIt>)/template<std::input_iterator InputIt>/g    bool empty() const noexcept { return size() == 0; }
     std::size_t size() const noexcept { return (eb - sb) * __buf_size + (ei - si); }
     std::size_t max_size() const noexcept { return std::numeric_limits<difference_type>::max(); }
 

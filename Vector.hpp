@@ -51,8 +51,7 @@ public:
 	    for (T& elem : *this) elem = value;
     }
 
-    template<class InputIt>
-    requires (!std::is_integral_v<InputIt>)
+    template<std::input_iterator InputIt>
     constexpr Vector(InputIt first, InputIt last) {
         std::size_t count = static_cast<std::size_t>(std::distance(first, last));
         __new_reserve(count);
@@ -123,8 +122,7 @@ public:
         sz = count;
     }
 
-    template<class InputIt>
-    requires (!std::is_integral_v<InputIt>)
+    template<std::input_iterator InputIt>
     constexpr void assign(InputIt first, InputIt last) {
         std::size_t count = static_cast<std::size_t>(std::distance(first, last));
         if (count > cap) __new_reserve(count);
@@ -231,8 +229,7 @@ public:
         return elems + index;
     }
 
-    template<class InputIt>
-    requires (!std::is_integral_v<InputIt>)
+    template<std::input_iterator InputIt>
     constexpr T* insert(const T* pos, InputIt first, InputIt last) {
         std::size_t index = pos - elems;
         std::size_t count = static_cast<std::size_t>(std::distance(first, last));
