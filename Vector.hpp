@@ -12,7 +12,6 @@
 #include <utility>
 #include <initializer_list>
 #include <type_traits>
-#include <memory> 
 #include <utility>
 
 template<class T>
@@ -237,7 +236,7 @@ public:
             sz += count;
             return elems + index;
         } else {
-            std::vector<T> tmp;
+            Vector<T> tmp;
             for (; first != last; ++first) tmp.push_back(*first);
             return insert(pos, tmp.begin(), tmp.end());
         }

@@ -7,6 +7,7 @@
 #include <limits>
 #include <type_traits>
 #include <utility>
+#include "Vector.hpp"
 
 template<class T, std::size_t __buf_sz>
 requires std::random_access_iterator<T*>
@@ -460,7 +461,9 @@ public:
             ei += (ei + count) % __buf_sz;
             return new_pos;
         } else {
-            for (; first != last; ++first) push_back(*first);
+            Vector<T> tmp;
+            for (; first != last; ++first) tmp.push_back(*first);
+            return insert(pos, tmp.begin(), tmp.end());
         }
     }
 
