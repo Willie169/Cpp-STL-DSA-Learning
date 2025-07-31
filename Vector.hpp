@@ -55,10 +55,15 @@ public:
 
     template<std::input_iterator InputIt>
     constexpr Vector(InputIt first, InputIt last) {
-        std::size_t count = static_cast<std::size_t>(std::distance(first, last));
-        __new_reserve(count);
-        for (T& elem : *this) elem = *(first++);
-        sz = count;
+        if constexpr (std::random_access_iterator<InputIt>) {
+            std::size_t count = static_cast<std::size_t>(std::distance(first, last));
+            __new_reserve(count);
+            for (T& elem : *this) elem = *(first++);
+            sz = count;
+        } else {
+            Vector(1);
+            for (; first != last; ++first) push_back(*first);
+        }
     }
 
     constexpr Vector(const Vector& other) : elems(static_cast<T*>(operator new[](other.cap * sizeof(T)))), sz(other.sz), cap(other.cap) { std::uninitialized_copy(other.elems, other.elems + sz, elems); }
@@ -112,10 +117,14 @@ public:
 
     template<std::input_iterator InputIt>
     constexpr void assign(InputIt first, InputIt last) {
-        std::size_t count = static_cast<std::size_t>(std::distance(first, last));
-        if (count > cap) __new_reserve(count);
-        for (T& elem : *this) elem = *(first++);
-        sz = count;
+        if constexpr (std::random_access_iterator<InputIt>) {
+            std::size_t count = static_cast<std::size_t>(std::distance(first, last));
+            if (count > cap) __new_reserve(count);
+            for (T& elem : *this) elem = *(first++);
+            sz = count;
+        } else {
+            for (; first != last; ++first) push_back(*first);
+        }
     }
 
     constexpr void assign(std::initializer_list<T> ilist) { *this = Vector(ilist); }
@@ -219,13 +228,19 @@ public:
 
     template<std::input_iterator InputIt>
     constexpr T* insert(const T* pos, InputIt first, InputIt last) {
-        std::size_t index = pos - elems;
-        std::size_t count = static_cast<std::size_t>(std::distance(first, last));
-        reserve(std::max(sz ? sz * VECTOR_GROW : 1, sz + count));
-        for (T* elem = end(); elem > elems + index; --elem) elem[count - 1] = std::move(elem[-1]);
-        for (T* elem = begin(); elem < begin() + count; ++elem) elem[index] = *(first++);
-        sz += count;
-        return elems + index;
+        if constexpr (std::random_access_iterator<InputIt>) {
+            std::size_t index = pos - elems;
+            std::size_t count = static_cast<std::size_t>(std::distance(first, last));
+            reserve(std::max(sz ? sz * VECTOR_GROW : 1, sz + count));
+            for (T* elem = end(); elem > elems + index; --elem) elem[count - 1] = std::move(elem[-1]);
+            for (T* elem = begin(); elem < begin() + count; ++elem) elem[index] = *(first++);
+            sz += count;
+            return elems + index;
+        } else {
+            std::vector<T> tmp;
+            for (; first != last; ++first) tmp.push_back(*first);
+            return insert(pos, tmp.begin(), tmp.end());
+        }
     }
 
     constexpr T* insert(const T* pos, std::initializer_list<T> ilist) { return insert(pos, ilist.begin(), ilist.end()); }
