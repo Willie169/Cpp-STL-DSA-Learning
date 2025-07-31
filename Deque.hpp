@@ -321,8 +321,16 @@ public:
     const_reverse_iterator rend() const { return const_reverse_iterator(cbegin()); }
     const_reverse_iterator crend() const { return const_reverse_iterator(cbegin()); }
 
-    bool empty() const noexcept { return size() == 0; }
-    std::size_t size() const noexcept { return (eb - sb) * __buf_sz + (ei - si); }
+    bool empty() const noexcept { 
+        if (map_sz == 0) return true;
+        return sb == eb && si == ei; 
+    }
+    
+    std::size_t size() const noexcept { 
+        if (empty()) return 0;
+        if (sb == eb) return ei - si;
+        return (eb - sb - 1) * __buf_sz + __buf_sz - si + ei;
+    }
     std::size_t max_size() const noexcept { return std::numeric_limits<difference_type>::max(); }
 
     void shrink_to_fit() {
@@ -350,7 +358,7 @@ public:
     void clear() noexcept {
         if (empty() || !map) {
             sb = eb = map_sz / 2;
-            si = ei = 0;
+            si = ei = __buf_sz / 2;
             return;
         }
         for (T** i = map + sb; i <= map + eb; ++i) {
@@ -359,7 +367,7 @@ public:
             for (T* j = *i + s; j < *i + e; ++j) j->~T();
         }
         sb = eb = map_sz / 2;
-        si = ei = 0;
+        si = ei = __buf_sz / 2;
     }
 
     iterator insert(const_iterator pos, const T& value) {
@@ -519,9 +527,16 @@ public:
     }
 
     void push_back(const T& value) {
-        if (ei != __buf_sz - 1) map[eb][ei++] = T(value);
+        if (map_sz == 0) {
+            map_sz = 3;
+            map = new T*[map_sz]();
+            sb = eb = 1;
+            si = ei = __buf_sz / 2;
+            map[1] = new T[__buf_sz];
+        }
+        if (ei != __buf_sz - 1) ei++;
         else if (eb != map_sz - 1) {
-            map[eb++][0] = T(value);
+            eb++;
             ei = 0;
         } else {
             std::size_t need = eb - sb + 4;
@@ -534,15 +549,23 @@ public:
             eb = eb - sb + 1;
             sb = 1;
             map_sz = need;
-            map[eb++][0] = T(value);
+            eb++;
             ei = 0;
         }
+        new (&map[eb][ei]) T(value);
     }
 
     void push_back(T&& value) {
-        if (ei != __buf_sz - 1) map[eb][ei++] = T(value);
+        if (map_sz == 0) {
+            map_sz = 3;
+            map = new T*[map_sz]();
+            sb = eb = 1;
+            si = ei = __buf_sz / 2;
+            map[1] = new T[__buf_sz];
+        }
+        if (ei != __buf_sz - 1) ei++;
         else if (eb != map_sz - 1) {
-            map[eb++][0] = std::move(value);
+            eb++;
             ei = 0;
         } else {
             std::size_t need = eb - sb + 4;
@@ -555,16 +578,17 @@ public:
             eb = eb - sb + 1;
             sb = 1;
             map_sz = need;
-            map[eb++][0] = std::move(value);
+            eb++;
             ei = 0;
         }
+        new (&map[eb][ei]) T(std::move(value));
     }
 
     template<class... Args>
     reference emplace_back(Args&&... args) {
         if (ei != __buf_sz - 1) new (&(map[eb][ei++])) T(std::forward<Args>(args)...);
         else if (eb != map_sz - 1) {
-            new (&(map[eb++][0]) T(std::forward<Args>(args)...);
+            new (&(map[eb++][0])) T(std::forward<Args>(args)...);
             ei = 0;
         } else {
             std::size_t need = eb - sb + 4;
@@ -584,7 +608,7 @@ public:
     }
 
     void pop_back() {
-        delete[] map[eb][ei];
+        map[eb][ei].~T();
         if (ei != 0) {
             ei--;
         } else {
@@ -594,9 +618,16 @@ public:
     }
 
     void push_front(const T& value) {
-        if (si != 0) map[sb][si--] = T(value);
+        if (map_sz == 0) {
+            map_sz = 3;
+            map = new T*[map_sz]();
+            sb = eb = 1;
+            si = ei = __buf_sz / 2;
+            map[1] = new T[__buf_sz];
+        }
+        if (si != 0) si--;
         else if (sb != 0) {
-            map[sb--][__buf_sz - 1] = T(value);
+            sb--;
             si = __buf_sz - 1;
         } else {
             std::size_t need = eb - sb + 4;
@@ -609,37 +640,46 @@ public:
             eb = eb - sb + 1;
             sb = 1;
             map_sz = need;
-            map[sb--][__buf_sz - 1] = T(value);
+            sb--;
             si = __buf_sz - 1;
         }
+        new (&map[sb][si]) T(value);
     }
 
     void push_front(T&& value) {
-        if (si != 0) map[sb][si--] = std::move(value);
+        if (map_sz == 0) {
+            map_sz = 3;
+            map = new T*[map_sz]();
+            sb = eb = 1;
+            si = ei = __buf_sz / 2;
+            map[1] = new T[__buf_sz];
+        }
+        if (si != 0) si--;
         else if (sb != 0) {
-            map[sb--][__buf_sz - 1] = std::move(value);
+            sb--;
             si = __buf_sz - 1;
         } else {
             std::size_t need = eb - sb + 4;
             T** new_map = new T*[need]();
             for (std::size_t i = 1; i < eb - sb + 2; ++i) new_map[i] = map[sb + i - 1];
-            for (T** i = map; i < map + sb; ++i) delete[] *i; 
+            for (T** i = map; i < map + sb; ++i) delete[] *i;
             for (T** i = map + eb + 1; i < map + map_sz; ++i) delete[] *i;
             delete[] map;
-            map = new_map; 
+            map = new_map;
             eb = eb - sb + 1;
             sb = 1;
             map_sz = need;
-            map[sb--][__buf_sz - 1] = std::move(value);
+            sb--;
             si = __buf_sz - 1;
         }
+        new (&map[sb][si]) T(std::move(value));
     }
 
     template<class... Args>
     reference emplace_front(Args&&... args) {
         if (si != 0) new (&(map[sb][si--])) T(std::forward<Args>(args)...);
         else if (sb != 0) {
-            new (&(map[sb--][__buf_sz - 1]) T(std::forward<Args>(args)...);
+            new (&(map[sb--][__buf_sz - 1])) T(std::forward<Args>(args)...);
             si = __buf_sz - 1;
         } else {
             std::size_t need = eb - sb + 4;
@@ -659,7 +699,7 @@ public:
     }
 
     void pop_front() {
-        delete[] map[sb][si];
+        map[sb][si].~T();
         if (si != __buf_sz) {
             si++;
         } else {
