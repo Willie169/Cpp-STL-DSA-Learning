@@ -1,16 +1,17 @@
 #pragma once
 
 #include <cstddef>
-#include <stdexcept>
-#include <iterator>
+#include <cstdint>
 #include <initializer_list>
+#include <iterator>
 #include <limits>
+#include <new>
+#include <stdexcept>
 #include <type_traits>
 #include <utility>
 #include "Vector.hpp"
 
 template<class T, std::size_t __buf_sz>
-requires std::random_access_iterator<T*>
 class DequeIterator {
     T** map;
     std::size_t block, index;
@@ -53,7 +54,6 @@ public:
 
     DequeIterator& operator+=(std::ptrdiff_t n) {
         std::ptrdiff_t pos = static_cast<std::ptrdiff_t>(block * __buf_sz + index) + n;
-        if (pos < 0) throw std::out_of_range("Deque");
         block = pos / __buf_sz;
         index = pos % __buf_sz;
         return *this;
@@ -115,7 +115,7 @@ public:
         map = new T*[map_sz]();
         sb = 1;
         eb = map_sz - 2;
-        for (std::size_t i = 0; i < map_sz; ++i) map[i] = (i < sb || i > eb) ? nullptr : new T[__buf_sz];
+        for (std::size_t i = sb; i <= eb; ++i) map[i] = static_cast<T*>(operator new(__buf_sz * sizeof(T)));
         si = 0;
         ei = count % __buf_sz;
         if (ei == 0 && count != 0) ei = __buf_sz;
@@ -136,7 +136,7 @@ public:
         map = new T*[map_sz]();
         sb = 1;
         eb = map_sz - 2;
-        for (std::size_t i = 0; i < map_sz; ++i) map[i] = (i < sb || i > eb) ? nullptr : new T[__buf_sz];
+        for (std::size_t i = sb; i <= eb; ++i) map[i] = static_cast<T*>(operator new(__buf_sz * sizeof(T)));
         si = 0;
         ei = count % __buf_sz;
         if (ei == 0 && count != 0) ei = __buf_sz;
@@ -160,7 +160,7 @@ public:
             sb = 1;
             eb = map_sz - 2;
             map = new T*[map_sz]();
-            for (std::size_t i = 0; i < map_sz; ++i) map[i] = (i < sb || i > eb) ? nullptr : new T[__buf_sz];
+            for (std::size_t i = sb; i <= eb; ++i) map[i] = static_cast<T*>(operator new(__buf_sz * sizeof(T)));
             si = 0;
             ei = count % __buf_sz;
             if (ei == 0 && count != 0) ei = __buf_sz;
@@ -181,7 +181,7 @@ public:
             return;
         }
         map = new T*[map_sz]();
-        for (std::size_t i = 0; i < map_sz; ++i) map[i] = (i < sb || i > eb) ? nullptr : new T[__buf_sz];
+        for (std::size_t i = sb; i <= eb; ++i) map[i] = static_cast<T*>(operator new(__buf_sz * sizeof(T)));
         std::size_t k = 0;
         for (std::size_t i = sb; i <= eb; ++i) {
             std::size_t s = (i == sb) ? si : 0;
@@ -197,7 +197,7 @@ public:
         map = new T*[map_sz]();
         sb = 1;
         eb = map_sz - 2;
-        for (std::size_t i = 0; i < map_sz; ++i) map[i] = (i < sb || i > eb) ? nullptr : new T[__buf_sz];
+        for (std::size_t i = sb; i <= eb; ++i) map[i] = static_cast<T*>(operator new(__buf_sz * sizeof(T)));
         si = 0;
         ei = ilist.size() % __buf_sz;
         if (ei == 0 && ilist.size() != 0) ei = __buf_sz;
@@ -372,7 +372,10 @@ public:
 
     iterator insert(const_iterator pos, const T& value) {
         if (eb < map_sz - 1 || ei < __buf_sz - 1) {
-            for (iterator i = end(); i > pos; --i) *i = std::move(*(i - 1));
+            for (iterator i = end(); i > pos; --i) {
+                *i = std::move(*(i - 1));
+                (i-1)->~T();
+            }
             *pos = value;
             if (ei != __buf_sz - 1) {
                 ei++;
@@ -407,7 +410,9 @@ public:
 
     iterator insert(const_iterator pos, T&& value) {
         if (eb < map_sz - 1 || ei < __buf_sz - 1) {
-            for (iterator i = end(); i > pos; --i) *i = std::move(*(i - 1));
+            for (iterator i = end(); i > pos; --i) {
+                *i = std::move(*(i - 1));
+                (i - 1)->~T();
             *pos = std::move(value);
             if (ei != __buf_sz - 1) {
                 ei++;
@@ -445,7 +450,10 @@ public:
         if constexpr (std::random_access_iterator<InputIt>) {
             std::size_t count = static_cast<std::size_t>(std::distance(first, last));
             if ((map_sz - eb) * __buf_sz - ei >= count) {
-                for (iterator i = end() + count - 1; i > pos + count - 1; --i) *i = std::move(*(i - count));
+                for (iterator i = end() + count - 1; i > pos + count - 1; --i) {
+                    *i = std::move(*(i - count));
+                    (i - count)->~T();
+                }
                 for (std::size_t i = 0; i < count; ++i) *(pos + i) = T(*(first + i));
                 eb += (ei + count) / __buf_sz;
                 ei += (ei + count) % __buf_sz;
@@ -517,8 +525,8 @@ public:
 
     iterator erase(const_iterator pos) {
         for (iterator i = pos; i < end() - 1; ++i) {
-            i->~T();
             *i = std::move(*(i + 1));
+            (i + 1)->~T();
         }
         if (ei != 0) ei --;
         else {
@@ -531,8 +539,8 @@ public:
     iterator erase(const_iterator first, const_iterator last) {
         std::size_t count = last - first;
         for (iterator i = first; i < end() - count; ++i) {
-            i->~T();
             *i = std::move(*(i + count));
+            (i + count)->~T();
         }
         if (count > 0) {
             if (ei >= count) ei -= count;
@@ -612,7 +620,7 @@ public:
             si = ei = __buf_sz / 2;
             map[1] = new T[__buf_sz];
         }
-        if (ei != __buf_sz - 1) new (&(map[eb][ei++])) T(std::forward<Args>(args)...);
+        if (ei != __buf_sz - 1) new (&(map[eb][++ei])) T(std::forward<Args>(args)...);
         else if (eb != map_sz - 1) {
             if (!map[++eb]) map[eb] = new T[__buf_sz];
             new (&(map[eb][0])) T(std::forward<Args>(args)...);
@@ -632,7 +640,7 @@ public:
             new (&(map[eb][0])) T(std::forward<Args>(args)...);
             ei = 0;
         }
-        return map[eb][ei];
+        return map[eb][ei - 1];
     }
 
     void pop_back() {
@@ -712,7 +720,7 @@ public:
             si = ei = __buf_sz / 2;
             map[1] = new T[__buf_sz]; 
         }
-        if (si != 0) new (&(map[sb][si--])) T(std::forward<Args>(args)...);
+        if (si != 0) new (&(map[sb][--si])) T(std::forward<Args>(args)...);
         else if (sb != 0) {
             if (!map[--sb]) map[sb] = new T[__buf_sz];
             new (&(map[sb][__buf_sz - 1])) T(std::forward<Args>(args)...);
@@ -747,65 +755,65 @@ public:
 
     void resize(std::size_t count) {
         std::size_t tmp = size();
-        if (count == tmp)
-        else if (count < tmp) {
+        if (count == tmp) return;
+        if (count < tmp) {
             for (iterator i = end() - 1; i >= begin() + count; --i) i->~T();
             std::size_t index = si + count - 1;
             ei = index % __buf_sz;
             eb = sb + index / __buf_sz;
-        } else {
-            std::size_t need = (si + count - 1) / __buf_sz;
-            if (map_sz < need) {
-                T** new_map = new T*[need + 2]();
-                for (std::size_t i = 1; i < eb - sb + 1; ++i) new_map[i] = map[sb + i - 1];
-                for (T** i = map; i < map + sb; ++i) delete[] *i;
-                for (T** i = map + eb + 1; i < map + map_sz; ++i) delete[] *i;
-                delete[] map;
-                map = new_map;
-                eb = eb - sb + 1;
-                sb = 1;
-                map_sz = need;
+            return;
+        }
+        std::size_t need = (si + count - 1) / __buf_sz;
+        if (map_sz < need) {
+            T** new_map = new T*[need + 2]();
+            for (std::size_t i = 1; i < eb - sb + 1; ++i) new_map[i] = map[sb + i - 1];
+            for (T** i = map; i < map + sb; ++i) delete[] *i;
+            for (T** i = map + eb + 1; i < map + map_sz; ++i) delete[] *i;
+            delete[] map;
+            map = new_map;
+            eb = eb - sb + 1;
+            sb = 1;
+            map_sz = need;
+        }
+        for (std::size_t i = 0; i < count - tmp; ++i) {
+            if (ei != __buf_sz - 1) ei++;
+            else {
+                eb++;
+                ei = 0;
             }
-            for (std::size_t i = 0; i < count - tmp; ++i) {
-                if (ei != __buf_sz - 1) ei++;
-                else {
-                    eb++;
-                    ei = 0;
-                }
-                new (&map[eb][ei]) T();
-            }
+            new (&map[eb][ei]) T();
         }
     }
 
     void resize(std::size_t count, const T& value) {
         std::size_t tmp = size();
-        if (count == tmp)
-        else if (count < tmp) {
+        if (count == tmp) return;
+        if (count < tmp) {
             for (iterator i = end() - 1; i >= begin() + count; --i) i->~T();
             std::size_t index = si + count - 1;
             ei = index % __buf_sz;
             eb = sb + index / __buf_sz;
-        } else {
-            std::size_t need = (si + count - 1) / __buf_sz;
-            if (map_sz < need) {
-                T** new_map = new T*[need + 2]();
-                for (std::size_t i = 1; i < eb - sb + 1; ++i) new_map[i] = map[sb + i - 1];
-                for (T** i = map; i < map + sb; ++i) delete[] *i;
-                for (T** i = map + eb + 1; i < map + map_sz; ++i) delete[] *i;
-                delete[] map;
-                map = new_map;
-                eb = eb - sb + 1;
-                sb = 1;
-                map_sz = need;
+            return;
+        }
+        std::size_t need = (si + count - 1) / __buf_sz;
+        if (map_sz < need) {
+            T** new_map = new T*[need + 2]();
+            for (std::size_t i = 1; i < eb - sb + 1; ++i) new_map[i] = map[sb + i - 1];
+            for (T** i = map; i < map + sb; ++i) delete[] *i; 
+            for (T** i = map + eb + 1; i < map + map_sz; ++i) delete[] *i;
+            delete[] map;
+            map = new_map; 
+            eb = eb - sb + 1;
+            sb = 1;
+            map_sz = need;
+        }
+        for (std::size_t i = 0; i < count - tmp; ++i) {
+            if (ei != __buf_sz - 1) ei++;
+            else {
+                eb++;
+                ei = 0;
             }
-            for (std::size_t i = 0; i < count - tmp; ++i) {
-                if (ei != __buf_sz - 1) ei++;
-                else {
-                    eb++;
-                    ei = 0;
-                }
-                new (&map[eb][ei]) T(value);
-            }
+            new (&map[eb][ei]) T(value);
         }
     }
 

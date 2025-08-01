@@ -6,11 +6,10 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <stdexcept>
-#include <iterator>
-#include <algorithm>
-#include <utility>
 #include <initializer_list>
+#include <iterator>
+#include <new>
+#include <stdexcept>
 #include <type_traits>
 #include <utility>
 
