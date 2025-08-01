@@ -257,7 +257,7 @@ public:
         map = new T*[map_sz]();
         sb = 1;
         eb = map_sz - 2;
-        for (std::size_t i = 0; i < map_sz; ++i) map[i] = (i < sb || i > eb) ? nullptr : new T[__buf_sz];
+        for (std::size_t i = sb; i <= eb; ++i) { map[i] = static_cast<T*>(operator new(__buf_sz * sizeof(T))); }
         si = 0;
         ei = ilist.size() % __buf_sz;
         if (ei == 0 && ilist.size() != 0) ei = __buf_sz;
@@ -323,11 +323,11 @@ public:
 
     bool empty() const noexcept { 
         if (map_sz == 0) return true;
-        return sb == eb && si == ei; 
+        return sb == eb && si >= ei; 
     }
     
     std::size_t size() const noexcept { 
-        if (empty()) return 0;
+        if (map_sz == 0) return 0;
         if (sb == eb) return ei - si;
         return (eb - sb - 1) * __buf_sz + __buf_sz - si + ei;
     }
@@ -371,33 +371,76 @@ public:
     }
 
     iterator insert(const_iterator pos, const T& value) {
-        if (eb < map_sz - 1 || ei < __buf_sz - 1) {
-            for (iterator i = end(); i > pos; --i) {
-                *i = std::move(*(i - 1));
-                (i-1)->~T();
+        if (pos > (size() - 1) / 2) {
+            if (eb < map_sz - 1 || ei < __buf_sz - 1) {
+                for (iterator i = end(); i > pos; --i) {
+                    *i = std::move(*(i - 1));
+                    (i - 1)->~T();
+                }
+                *pos = value;
+                if (ei != __buf_sz - 1) {
+                    ei++;
+                } else {
+                    eb++;
+                    ei = 0;
+                }
+                return pos;
             }
-            *pos = value;
+            std::size_t index = pos - begin();
+            std::size_t need = eb - sb + 3 + ((ei == __buf_sz - 1) ? 1 : 0);
+            T** new_map = new T*[need]();
+            for (std::size_t i = 1; i < eb - sb + 2; ++i) new_map[i] = map[sb + i - 1];
+            for (T** i = map; i < map + sb; ++i) delete[] *i;
+            for (T** i = map + eb + 1; i < map + map_sz; ++i) delete[] *i;
+            delete[] map;
+            map = new_map;
+            eb = eb - sb + 1;
+            sb = 1;
+            map_sz = need;
+            iterator new_pos = begin() + index;
+            for (iterator i = end(); i > new_pos; --i) {
+                *i = std::move(*(i - 1));
+                (i - 1)->~T();
+            }
+            *new_pos = value;
             if (ei != __buf_sz - 1) {
                 ei++;
             } else {
                 eb++;
                 ei = 0;
             }
+            return new_pos;
+        }
+        if (sb > 0 || si > 0) {
+            for (iterator i = begin() - 1; i < pos; ++i) {
+                *i = std::move(*(i + 1));
+                (i + 1)->~T();
+            }
+            *pos = value;
+            if (si != 0) {
+                si--;
+            } else {
+                sb--;
+                si = __buf_sz - 1;
+            }
             return pos;
         }
         std::size_t index = pos - begin();
-        std::size_t need = eb - sb + 3 + ((ei == __buf_sz - 1) ? 1 : 0);
+        std::size_t need = eb - sb + 3 + ((si == 0) ? 1 : 0);
         T** new_map = new T*[need]();
         for (std::size_t i = 1; i < eb - sb + 2; ++i) new_map[i] = map[sb + i - 1];
         for (T** i = map; i < map + sb; ++i) delete[] *i;
         for (T** i = map + eb + 1; i < map + map_sz; ++i) delete[] *i;
         delete[] map;
         map = new_map;
-        sb = 2;
-        eb = need - 2;
+        eb = eb - sb + 1;
+        sb = 1;
         map_sz = need;
         iterator new_pos = begin() + index;
-        for (iterator i = end(); i > new_pos; --i) *i = std::move(*(i - 1));
+        for (iterator i = begin() - 1; i < new_pos; ++i) {
+            *i = std::move(*(i + 1));
+            (i + 1)->~T();
+        }
         *new_pos = value;
         if (ei != __buf_sz - 1) {
             ei++;
@@ -409,33 +452,77 @@ public:
     }
 
     iterator insert(const_iterator pos, T&& value) {
-        if (eb < map_sz - 1 || ei < __buf_sz - 1) {
-            for (iterator i = end(); i > pos; --i) {
+        if (pos > (size() - 1) / 2) {
+            if (eb < map_sz - 1 || ei < __buf_sz - 1) {
+                for (iterator i = end(); i > pos; --i) {
+                    *i = std::move(*(i - 1));
+                    (i - 1)->~T();
+                }
+                *pos = value;
+                if (ei != __buf_sz - 1) {
+                    ei++;
+                } else {
+                    eb++;
+                    ei = 0;
+                }
+                return pos;
+            }
+            std::size_t index = pos - begin();
+            std::size_t need = eb - sb + 3 + ((ei == __buf_sz - 1) ? 1 : 0);
+            T** new_map = new T*[need]();
+            for (std::size_t i = 1; i < eb - sb + 2; ++i) new_map[i] = map[sb + i - 1];
+            for (T** i = map; i < map + sb; ++i) delete[] *i;
+            for (T** i = map + eb + 1; i < map + map_sz; ++i) delete[] *i;
+            delete[] map;
+            map = new_map;
+            eb = eb - sb + 1;
+            sb = 1;
+            map_sz = need;
+            iterator new_pos = begin() + index;
+            for (iterator i = end(); i > new_pos; --i) {
                 *i = std::move(*(i - 1));
                 (i - 1)->~T();
-            *pos = std::move(value);
+            }
+            *new_pos = value;
             if (ei != __buf_sz - 1) {
                 ei++;
             } else {
                 eb++;
                 ei = 0;
             }
+            return new_pos;
+        }
+        if (sb > 0 || si > 0) {
+            for (iterator i = begin() - 1; i < pos; ++i) {
+                *i = std::move(*(i + 1));
+                (i + 1)->~T();
+            }
+            *pos = value;
+            if (si != 0) {
+                si--;
+            } else {
+                sb--;
+                si = __buf_sz - 1;
+            }
             return pos;
         }
         std::size_t index = pos - begin();
-        std::size_t need = eb - sb + 3 + ((ei == __buf_sz - 1) ? 1 : 0);
+        std::size_t need = eb - sb + 3 + ((si == 0) ? 1 : 0);
         T** new_map = new T*[need]();
         for (std::size_t i = 1; i < eb - sb + 2; ++i) new_map[i] = map[sb + i - 1];
         for (T** i = map; i < map + sb; ++i) delete[] *i;
         for (T** i = map + eb + 1; i < map + map_sz; ++i) delete[] *i;
         delete[] map;
         map = new_map;
-        sb = 2;
-        eb = need - 2;
+        eb = eb - sb + 1;
+        sb = 1;
         map_sz = need;
         iterator new_pos = begin() + index;
-        for (iterator i = end(); i > new_pos; --i) *i = std::move(*(i - 1));
-        *new_pos = std::move(value);
+        for (iterator i = begin() - 1; i < new_pos; ++i) {
+            *i = std::move(*(i + 1));
+            (i + 1)->~T();
+        }
+        *new_pos = value;
         if (ei != __buf_sz - 1) {
             ei++;
         } else {
@@ -448,33 +535,73 @@ public:
     template<std::input_iterator InputIt>
     iterator insert(const_iterator pos, InputIt first, InputIt last) {
         if constexpr (std::random_access_iterator<InputIt>) {
-            std::size_t count = static_cast<std::size_t>(std::distance(first, last));
-            if ((map_sz - eb) * __buf_sz - ei >= count) {
-                for (iterator i = end() + count - 1; i > pos + count - 1; --i) {
+            if (pos > (size() - 1) / 2) {
+                std::size_t count = static_cast<std::size_t>(std::distance(first, last));
+                if ((map_sz - eb) * __buf_sz - ei >= count) {
+                    for (iterator i = end() + count - 1; i >= pos + count; --i) {
+                        *i = std::move(*(i - count));
+                        (i - count)->~T();
+                    }
+                    for (std::size_t i = 0; i < count; ++i) *(pos + i) = T(*(first + i));
+                    std::size_t tmp = ei + count;
+                    eb += tmp / __buf_sz;
+                    ei += tmp % __buf_sz;
+                    return pos;
+                }
+                std::size_t index = pos - begin();
+                std::size_t need = eb - sb + 3 + (ei + count) / __buf_sz;
+                T** new_map = new T*[need]();
+                for (std::size_t i = 1; i < eb - sb + 2; ++i) new_map[i] = map[sb + i - 1];
+                for (T** i = map; i < map + sb; ++i) delete[] *i;
+                for (T** i = map + eb + 1; i < map + map_sz; ++i) delete[] *i;
+                delete[] map;
+                map = new_map;
+                eb = eb - sb + 1;
+                sb = 1;
+                map_sz = need;
+                iterator new_pos = begin() + index;
+                for (iterator i = end() + count - 1; i >= new_pos + count; --i) {
                     *i = std::move(*(i - count));
                     (i - count)->~T();
                 }
+                for (std::size_t i = 0; i < count; ++i) *(new_pos + i) = T(*(first + i));
+                std::size_t tmp = ei + count;
+                eb += tmp / __buf_sz;
+                ei += tmp % __buf_sz;
+                return new_pos;
+            }
+            std::size_t count = static_cast<std::size_t>(std::distance(first, last));
+            if (sb * __buf_sz + si >= count) {
+                for (iterator i = begin() - count; i < pos - count; --i) {
+                    *i = std::move(*(i + count));
+                    (i + count)->~T();
+                }
                 for (std::size_t i = 0; i < count; ++i) *(pos + i) = T(*(first + i));
-                eb += (ei + count) / __buf_sz;
-                ei += (ei + count) % __buf_sz;
+                std::size_t tmp = __buf_sz - si + count;
+                sb -= tmp / __buf_sz;
+                ei -= tmp % __buf_sz;
                 return pos;
             }
+            std::size_t tmp = __buf_sz - si + count;
             std::size_t index = pos - begin();
-            std::size_t need = eb - sb + 3 + (ei + count) / __buf_sz;
+            std::size_t need = eb - sb + 3 + tmp / __buf_sz;
             T** new_map = new T*[need]();
             for (std::size_t i = 1; i < eb - sb + 2; ++i) new_map[i] = map[sb + i - 1];
             for (T** i = map; i < map + sb; ++i) delete[] *i;
             for (T** i = map + eb + 1; i < map + map_sz; ++i) delete[] *i;
             delete[] map;
             map = new_map;
-            sb = 2;
-            eb = need - 2;
+            eb = eb - sb + 1;
+            sb = 1;
             map_sz = need;
             iterator new_pos = begin() + index;
-            for (iterator i = end() + count - 1; i > new_pos + count - 1; --i) *i = std::move(*(i - count));
+            for (iterator i = begin() - count; i < pos - count; --i) {
+                *i = std::move(*(i + count));
+                (i + count)->~T();
+            }
             for (std::size_t i = 0; i < count; ++i) *(new_pos + i) = T(*(first + i));
-            eb += (ei + count) / __buf_sz;
-            ei += (ei + count) % __buf_sz;
+            sb -= tmp / __buf_sz;
+            ei -= tmp % __buf_sz;
             return new_pos;
         } else {
             Vector<T> tmp;
@@ -483,14 +610,15 @@ public:
         }
     }
 
-    iterator insert(const_iterator pos, std::initializer_list<T> ilist) {
-        return insert(pos, ilist.begin(), ilist.end());
-    }
+    iterator insert(const_iterator pos, std::initializer_list<T> ilist) { return insert(pos, ilist.begin(), ilist.end()); }
 
     template<class... Args>
     iterator emplace(const_iterator pos, Args&&... args) {
         if (eb < map_sz - 1 || ei < __buf_sz - 1) {
-            for (iterator i = end(); i > pos; --i) *i = std::move(*(i - 1));
+            for (iterator i = end(); i > pos; --i) {
+                *i = std::move(*(i - 1));
+                (i - 1)->~T();
+            }
             new (&*pos) T(std::forward<Args>(args)...);
             if (ei != __buf_sz - 1) {
                 ei++;
@@ -512,7 +640,10 @@ public:
         eb = need - 2;
         map_sz = need;
         iterator new_pos = begin() + index;
-        for (iterator i = end(); i > new_pos; --i) *i = std::move(*(i - 1));
+        for (iterator i = end(); i > new_pos; --i) {
+            *i = std::move(*(i - 1));
+            (i - 1)->~T();
+        }
         new (&*new_pos) T(std::forward<Args>(args)...);
         if (ei != __buf_sz - 1) {
             ei++;
@@ -640,7 +771,7 @@ public:
             new (&(map[eb][0])) T(std::forward<Args>(args)...);
             ei = 0;
         }
-        return map[eb][ei - 1];
+        return map[eb][ei];
     }
 
     void pop_back() {
