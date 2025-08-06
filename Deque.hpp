@@ -16,11 +16,14 @@ class __DequeIterator {
     T** map;
     std::size_t block, index;
 
+
 public:
     __DequeIterator(T** map, std::size_t block, std::size_t index) : map(map), block(block), index(index) {}
 
+
     T& operator*() const { return map[block][index]; }
     T* operator->() const { return &map[block][index]; }
+
 
     __DequeIterator& operator++() {
         if (++index == __buf_sz) {
@@ -30,11 +33,13 @@ public:
      return *this;
     }
 
+
     __DequeIterator operator++(int) {
         __DequeIterator tmp = *this;
         ++(*this);
         return tmp;
     }
+
 
     __DequeIterator& operator--() {
         if (index == 0) {
@@ -46,11 +51,13 @@ public:
         return *this;
     }
 
+
     __DequeIterator operator--(int) {
         __DequeIterator tmp = *this;
         --(*this);
         return tmp;
     }
+
 
     __DequeIterator& operator+=(std::ptrdiff_t n) {
         std::ptrdiff_t pos = static_cast<std::ptrdiff_t>(block * __buf_sz + index) + n;
@@ -59,37 +66,34 @@ public:
         return *this;
     }
 
+
     __DequeIterator operator+(std::ptrdiff_t n) const {
         __DequeIterator tmp = *this;
         return tmp += n;
     }
 
+
     __DequeIterator& operator-=(std::ptrdiff_t n) { return *this += -n; }
+
 
     __DequeIterator operator-(std::ptrdiff_t n) const {
         __DequeIterator tmp = *this;
         return tmp -= n;
     }
 
+
     std::ptrdiff_t operator-(const __DequeIterator& other) const { return ((block * __buf_sz + index) - (other.block * __buf_sz + other.index)); }
+
 
     T& operator[](std::ptrdiff_t n) const { return *(*this + n); }
 
+
     bool operator==(const __DequeIterator& rhs) const { return map == rhs.map && block == rhs.block && index == rhs.index; }
-    bool operator!=(const __DequeIterator& rhs) const { return !(*this == rhs); }
-    bool operator<(const __DequeIterator& rhs) const { return (block < rhs.block) || (block == rhs.block && index < rhs.index); }
-    bool operator>(const __DequeIterator& rhs) const { return rhs < *this; }
-    bool operator<=(const __DequeIterator& rhs) const { return !(rhs < *this); }
-    bool operator>=(const __DequeIterator& rhs) const { return !(*this < rhs); }
 };
 
 
 template<class T>
 class Deque {
-    T** map;
-    std::size_t map_sz, sb, si, eb, ei;
-    static const size_t __buf_sz = sizeof(T) < 512 ? size_t(512 / sizeof(T)) : size_t(1);
-
 public:
     using value_type = T;
     using size_type = std::size_t;
@@ -102,8 +106,17 @@ public:
     using const_iterator = __DequeIterator<const T, __buf_sz>;
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-    
+
+
+private:
+    T** map;
+    std::size_t map_sz, sb, si, eb, ei;
+    static const size_t __buf_sz = sizeof(T) < 512 ? size_t(512 / sizeof(T)) : size_t(1);
+
+
+public:
     Deque() : map(nullptr), map_sz(0), sb(0), si(0), eb(0), ei(0) {}
+
 
     explicit Deque(std::size_t count) {
         if (count == 0) {
@@ -126,6 +139,7 @@ public:
         }
     }
 
+
     Deque(std::size_t count, const T& value) {
         if (count == 0) {
             map = nullptr;
@@ -146,6 +160,7 @@ public:
             for (std::size_t j = s; j < e; ++j) new (&map[i][j]) T(value);
         }
     }
+
 
     template<std::input_iterator InputIt>
     Deque(InputIt first, InputIt last) {
@@ -175,6 +190,7 @@ public:
         }
     }
 
+
     Deque(const Deque& other) : map_sz(other.map_sz), sb(other.sb), si(other.si), eb(other.eb), ei(other.ei) {
         if (map_sz == 0) {
             map = nullptr;
@@ -190,7 +206,9 @@ public:
         }
     }
 
+
     Deque(Deque&& other) noexcept : map(std::exchange(other.map, nullptr)), map_sz(std::exchange(other.map_sz, 0)), sb(std::exchange(other.sb, 0)), si(std::exchange(other.si, 0)), eb(std::exchange(other.eb, 0)), ei(std::exchange(other.ei, 0)) {}
+
 
     Deque(std::initializer_list<T> ilist) {
         map_sz = (ilist.size() + __buf_sz - 1) / __buf_sz + 2;
@@ -209,6 +227,7 @@ public:
         }
     }
 
+
     ~Deque() {
         if (!map) return;
         for (std::size_t i = sb; i <= eb; ++i) {
@@ -222,6 +241,7 @@ public:
         delete[] map;
     }
 
+
     Deque& operator=(const Deque& other) {
         if (this != &other) {
             Deque tmp(other);
@@ -229,6 +249,7 @@ public:
         }
         return *this;
     }
+
 
     Deque& operator=(Deque&& other) {
         if (this != &other) {
@@ -242,6 +263,7 @@ public:
         }
         return *this;
     }
+
 
     Deque& operator=(std::initializer_list<T> ilist) {
         for (std::size_t i = sb; i <= eb; ++i) {
@@ -269,6 +291,7 @@ public:
         }
     }
 
+
     T& at(std::size_t pos) {
         if (pos >= size()) throw std::out_of_range("Deque");
         std::size_t offset = si + pos;
@@ -276,6 +299,7 @@ public:
         std::size_t index = offset % __buf_sz;
         return map[block][index];
     }
+
 
     const T& at(std::size_t pos) const {
         if (pos >= size()) throw std::out_of_range("Deque");
@@ -285,12 +309,14 @@ public:
         return map[block][index];
     }
 
+
     T& operator[](std::size_t pos) {
         std::size_t offset = si + pos;
         std::size_t block = sb + offset / __buf_sz;
         std::size_t index = offset % __buf_sz;
         return map[block][index];
     }
+
 
     const T& operator[](std::size_t pos) const {
         std::size_t offset = si + pos;
@@ -299,11 +325,13 @@ public:
         return map[block][index];
     }
 
+
     T& front() { return (*this)[0]; }
     const T& front() const { return (*this)[0]; }
 
     T& back() { return (*this)[size() - 1]; }
     const T& back() const { return (*this)[size() - 1]; }
+
 
     iterator begin() { return iterator(map, sb, si); }
     const_iterator begin() const { return const_iterator(map, sb, si); }
@@ -321,17 +349,22 @@ public:
     const_reverse_iterator rend() const { return const_reverse_iterator(cbegin()); }
     const_reverse_iterator crend() const { return const_reverse_iterator(cbegin()); }
 
+
     bool empty() const noexcept { 
         if (map_sz == 0) return true;
         return sb == eb && si >= ei; 
     }
-    
+
+
     std::size_t size() const noexcept { 
         if (map_sz == 0) return 0;
         if (sb == eb) return ei - si;
         return (eb - sb - 1) * __buf_sz + __buf_sz - si + ei;
     }
+
+
     std::size_t max_size() const noexcept { return std::numeric_limits<difference_type>::max(); }
+
 
     void shrink_to_fit() {
         if (empty()) {
@@ -355,6 +388,7 @@ public:
         map_sz = need;
     }
 
+
     void clear() noexcept {
         if (empty() || !map) {
             sb = eb = map_sz / 2;
@@ -369,6 +403,7 @@ public:
         sb = eb = map_sz / 2;
         si = ei = __buf_sz / 2;
     }
+
 
     iterator insert(const_iterator pos, const T& value) {
         if (pos > (size() - 1) / 2) {
@@ -451,6 +486,7 @@ public:
         return new_pos;
     }
 
+
     iterator insert(const_iterator pos, T&& value) {
         if (pos > (size() - 1) / 2) {
             if (eb < map_sz - 1 || ei < __buf_sz - 1) {
@@ -532,6 +568,7 @@ public:
         return new_pos;
     }
 
+
     template<std::input_iterator InputIt>
     iterator insert(const_iterator pos, InputIt first, InputIt last) {
         if constexpr (std::random_access_iterator<InputIt>) {
@@ -610,7 +647,9 @@ public:
         }
     }
 
+
     iterator insert(const_iterator pos, std::initializer_list<T> ilist) { return insert(pos, ilist.begin(), ilist.end()); }
+
 
     template<class... Args>
     iterator emplace(const_iterator pos, Args&&... args) {
@@ -654,6 +693,7 @@ public:
         return new_pos;
     }
 
+
     iterator erase(const_iterator pos) {
         for (iterator i = pos; i < end() - 1; ++i) {
             *i = std::move(*(i + 1));
@@ -666,6 +706,7 @@ public:
         }   
         return pos;
     }
+
 
     iterator erase(const_iterator first, const_iterator last) {
         std::size_t count = last - first;
@@ -683,6 +724,7 @@ public:
         }
         return first;
     }
+
 
     void push_back(const T& value) {
         if (map_sz == 0) {
@@ -713,6 +755,7 @@ public:
         new (&map[eb][ei]) T(value);
     }
 
+
     void push_back(T&& value) {
         if (map_sz == 0) {
             map_sz = 3;
@@ -741,6 +784,7 @@ public:
         }
         new (&map[eb][ei]) T(std::move(value));
     }
+
 
     template<class... Args>
     reference emplace_back(Args&&... args) {
@@ -774,6 +818,7 @@ public:
         return map[eb][ei];
     }
 
+
     void pop_back() {
         map[eb][ei].~T();
         if (ei != 0) {
@@ -783,6 +828,7 @@ public:
             ei = __buf_sz - 1;
         }
     }
+
 
     void push_front(const T& value) {
         if (map_sz == 0) {
@@ -813,6 +859,7 @@ public:
         new (&map[sb][si]) T(value);
     }
 
+
     void push_front(T&& value) {
         if (map_sz == 0) {
             map_sz = 3;
@@ -841,6 +888,7 @@ public:
         }
         new (&map[sb][si]) T(std::move(value));
     }
+
 
     template<class... Args>
     reference emplace_front(Args&&... args) {
@@ -874,6 +922,7 @@ public:
         return map[sb][si];
     }
 
+
     void pop_front() {
         map[sb][si].~T();
         if (si != __buf_sz - 1) {
@@ -883,6 +932,7 @@ public:
             si = 0;
         }
     }
+
 
     void resize(std::size_t count) {
         std::size_t tmp = size();
@@ -916,6 +966,7 @@ public:
         }
     }
 
+
     void resize(std::size_t count, const T& value) {
         std::size_t tmp = size();
         if (count == tmp) return;
@@ -947,6 +998,7 @@ public:
             new (&map[eb][ei]) T(value);
         }
     }
+
 
     void swap(Deque& other) noexcept {
         std::swap(map, other.map);
