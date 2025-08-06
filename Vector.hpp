@@ -543,3 +543,44 @@ namespace pmr {
     using vector = Vector<T, std::pmr::polymorphic_allocator<T>>;
 }
 
+
+template<class Allocator>
+Vector(const Allocator&) -> Vector<typename std::allocator_traits<Allocator>::value_type, Allocator>;
+
+
+template<class Allocator>
+Vector(std::size_t, const Allocator&) -> Vector<typename std::allocator_traits<Allocator>::value_type, Allocator>;
+
+
+template<class T>
+Vector(std::size_t, const T&) -> Vector<T>;
+
+template<class T, class Allocator>
+Vector(std::size_t, const T&, const Allocator&) -> Vector<T, Allocator>;
+
+
+template<std::input_iterator InputIt>
+Vector(InputIt, InputIt) -> Vector<typename std::iterator_traits<InputIt>::value_type>;
+
+
+template<std::input_iterator InputIt, class Allocator>
+Vector(InputIt, InputIt, const Allocator&) -> Vector<typename std::iterator_traits<InputIt>::value_type, Allocator>;
+
+
+template<class T>
+Vector(std::initializer_list<T>) -> Vector<T>;
+
+
+template<class T, class Allocator>
+Vector(std::initializer_list<T>, const Allocator&) -> Vector<T, Allocator>;
+
+
+template<std::ranges::input_range R, class Allocator>
+requires (!std::convertible_to<R, std::size_t>)
+Vector(std::from_range_t, R&&, const Allocator&) -> Vector<std::ranges::range_value_t<R>, Allocator>;
+
+
+template<class Allocator>
+requires { typename Allocator::value_type; }
+Vector(Allocator) -> Vector<typename Allocator::value_type, Allocator>;
+

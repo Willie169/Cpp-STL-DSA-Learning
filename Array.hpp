@@ -86,34 +86,9 @@ constexpr bool operator==(const Array<T, N>& lhs, const Array<T, N>& rhs) {
     return std::equal(lhs.begin(), lhs.end(), rhs.begin());
 }
 
-// Non-member operator<=> (C++20 three-way comparison)
-template<class T, std::size_t N>
-constexpr std::compare_three_way_result_t<T> operator<=>(const Array<T, N>& lhs, const Array<T, N>& rhs) {
-    return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
-}
-
 
 template<class T, std::size_t N>
-constexpr void swap(Array<T, N>& lhs, Array<T, N>& rhs) noexcept(noexcept(lhs.swap(rhs))) { lhs.swap(rhs); }
-
-
-template<class T, std::size_t N>
-constexpr Array<std::remove_cv_t<T>, N> to_array(T (&arr)[N]) { return [&arr]<std::size_t... I>(std::index_sequence<I...>) { return Array<std::remove_cv_t<T>, N>{arr[I]...}; }(std::make_index_sequence<N>{}); }
-
-
-template<class T, std::size_t N>
-constexpr Array<std::remove_cv_t<T>, N> to_array(T (&&arr)[N]) { return [&arr]<std::size_t... I>(std::index_sequence<I...>) { return Array<std::remove_cv_t<T>, N>{std::move(arr[I])...}; }(std::make_index_sequence<N>{}); }
-
-
-template<class T, std::size_t N>
-struct std::tuple_size<Array<T, N>> : std::integral_constant<std::size_t, N> {};
-
-
-template<std::size_t I, class T, std::size_t N>
-struct std::tuple_element<I, Array<T, N>> {
-    static_assert(I < N, "Index out of bounds for Array");
-    using type = T;
-};
+constexpr std::compare_three_way_result_t<T> operator<=>(const Array<T, N>& lhs, const Array<T, N>& rhs) { return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end()); }
 
 
 template<std::size_t I, class T, std::size_t N>
@@ -142,4 +117,40 @@ constexpr const T&& get(const Array<T, N>&& arr) noexcept {
     static_assert(I < N, "Index out of bounds for Array");
     return std::move(arr[I]);
 }
+
+
+template<class T, std::size_t N>
+constexpr void swap(Array<T, N>& lhs, Array<T, N>& rhs) noexcept(noexcept(lhs.swap(rhs))) { lhs.swap(rhs); }
+
+
+template<class T, std::size_t N>
+constexpr Array<std::remove_cv_t<T>, N> to_array(T (&arr)[N]) { return [&arr]<std::size_t... I>(std::index_sequence<I...>) { return Array<std::remove_cv_t<T>, N>{arr[I]...}; }(std::make_index_sequence<N>{}); }
+
+
+template<class T, std::size_t N>
+constexpr Array<std::remove_cv_t<T>, N> to_array(T (&&arr)[N]) { return [&arr]<std::size_t... I>(std::index_sequence<I...>) { return Array<std::remove_cv_t<T>, N>{std::move(arr[I])...}; }(std::make_index_sequence<N>{}); }
+
+
+template<class T, std::size_t N>
+struct std::tuple_size<Array<T, N>> : std::integral_constant<std::size_t, N> {};
+
+
+template<std::size_t I, class T, std::size_t N>
+struct std::tuple_element<I, Array<T, N>> {
+    static_assert(I < N, "Index out of bounds for Array");
+    using type = T;
+};
+
+
+template<class T, class... U>
+requires (std::same_as<T, U> && ...)
+Array(T, U...) -> Array<T, 1 + sizeof...(U)>;
+
+
+template<class T, std::size_t N>
+Array(T(&)[N]) -> Array<T, N>;
+
+
+template<class T, std::size_t N>
+Array(const T(&)[N]) -> Array<T, N>;
 
