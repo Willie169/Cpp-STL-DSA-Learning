@@ -8,6 +8,7 @@
 #include <type_traits>
 #include <utility>
 
+
 template<class T, std::size_t N>
 struct Array {
     using value_type = T;
@@ -24,12 +25,10 @@ struct Array {
 
 
 private:
-
     T elems[N == 0 ? 1 : N];
 
 
 public:
-
     constexpr T& at(std::size_t index) {
         if (index >= N) throw std::out_of_range("Array");
         return elems[index];
@@ -143,3 +142,4 @@ constexpr const T&& get(const Array<T, N>&& arr) noexcept {
     static_assert(I < N, "Index out of bounds for Array");
     return std::move(arr[I]);
 }
+
