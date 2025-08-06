@@ -1,9 +1,9 @@
 #pragma once
 
-#include <cstddef>
-#include <stdexcept>
-#include <iterator>
 #include <algorithm>
+#include <cstddef>
+#include <iterator>
+#include <stdexcept>
 #include <utility>
 
 template<class T, std::size_t N>

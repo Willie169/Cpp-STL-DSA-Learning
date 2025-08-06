@@ -8,21 +8,27 @@
 #include <cstdint>
 #include <initializer_list>
 #include <iterator>
+#include <memory>
+#include <memory_resource>
 #include <new>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
 
-template<class T>
+template<class T, class Allocator = std::allocator<T>>
 class Vector {
+    Allocator alloc;
     T* elems;
     std::size_t sz;
     std::size_t cap;
 
     constexpr void __new_reserve(std::size_t new_cap) {
         if (new_cap > SIZE_MAX) throw std::length_error("Vector");
-        T* new_elems = new T[new_cap];
-        delete[] elems;
+        T* new_elems = alloc.allocate(new_cap);
+        if (elems) {
+            for (T* i = elems; i < elems + sz; ++i) { std::destroy_at(i); }
+            alloc.deallocate(elems, cap);
+        }
         elems = new_elems;
         cap = new_cap;
     }
@@ -40,19 +46,19 @@ public:
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-    constexpr Vector() : elems(nullptr), sz(0), cap(0) {}
+    constexpr vector() noexcept(noexcept(Allocator())) : alloc(Allocator()), elems(nullptr), sz(0), cap(0) {}
 
-    explicit Vector(std::size_t count) : sz(count) {
-        __new_reserve(count);
-    }
+    constexpr explicit vector(const Allocator& alloc_) noexcept : alloc(alloc_), elems(nullptr), sz(0), cap(0) {}
 
-    constexpr Vector(std::size_t count, const T& value) : sz(count) {
+    explicit Vector(std::size_t count, const Allocator& alloc_ = Allocator()) : alloc(alloc_), sz(count) { __new_reserve(count); }
+
+    constexpr Vector(std::size_t count, const T& value, const Allocator& alloc_ = Allocator()) : alloc(alloc_), sz(count) {
         __new_reserve(count);
 	    for (T& elem : *this) elem = value;
     }
 
     template<std::input_iterator InputIt>
-    constexpr Vector(InputIt first, InputIt last) {
+    constexpr Vector(InputIt first, InputIt last, const Allocator& alloc_ = Allocator()) : alloc(alloc_) {
         if constexpr (std::random_access_iterator<InputIt>) {
             std::size_t count = static_cast<std::size_t>(std::distance(first, last));
             __new_reserve(count);
@@ -332,4 +338,10 @@ public:
         std::swap(cap, other.cap);
     }
 };
+
+
+namespace pmr {
+    template< class T >
+    using vector = std::vector<T, std::pmr::polymorphic_allocator<T>>;
+}
 

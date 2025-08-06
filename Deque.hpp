@@ -12,17 +12,17 @@
 #include "Vector.hpp"
 
 template<class T, std::size_t __buf_sz>
-class DequeIterator {
+class __DequeIterator {
     T** map;
     std::size_t block, index;
 
 public:
-    DequeIterator(T** map, std::size_t block, std::size_t index) : map(map), block(block), index(index) {}
+    __DequeIterator(T** map, std::size_t block, std::size_t index) : map(map), block(block), index(index) {}
 
     T& operator*() const { return map[block][index]; }
     T* operator->() const { return &map[block][index]; }
 
-    DequeIterator& operator++() {
+    __DequeIterator& operator++() {
         if (++index == __buf_sz) {
             ++block;
             index = 0;
@@ -30,13 +30,13 @@ public:
      return *this;
     }
 
-    DequeIterator operator++(int) {
-        DequeIterator tmp = *this;
+    __DequeIterator operator++(int) {
+        __DequeIterator tmp = *this;
         ++(*this);
         return tmp;
     }
 
-    DequeIterator& operator--() {
+    __DequeIterator& operator--() {
         if (index == 0) {
             --block;
             index = __buf_sz - 1;
@@ -46,41 +46,41 @@ public:
         return *this;
     }
 
-    DequeIterator operator--(int) {
-        DequeIterator tmp = *this;
+    __DequeIterator operator--(int) {
+        __DequeIterator tmp = *this;
         --(*this);
         return tmp;
     }
 
-    DequeIterator& operator+=(std::ptrdiff_t n) {
+    __DequeIterator& operator+=(std::ptrdiff_t n) {
         std::ptrdiff_t pos = static_cast<std::ptrdiff_t>(block * __buf_sz + index) + n;
         block = pos / __buf_sz;
         index = pos % __buf_sz;
         return *this;
     }
 
-    DequeIterator operator+(std::ptrdiff_t n) const {
-        DequeIterator tmp = *this;
+    __DequeIterator operator+(std::ptrdiff_t n) const {
+        __DequeIterator tmp = *this;
         return tmp += n;
     }
 
-    DequeIterator& operator-=(std::ptrdiff_t n) { return *this += -n; }
+    __DequeIterator& operator-=(std::ptrdiff_t n) { return *this += -n; }
 
-    DequeIterator operator-(std::ptrdiff_t n) const {
-        DequeIterator tmp = *this;
+    __DequeIterator operator-(std::ptrdiff_t n) const {
+        __DequeIterator tmp = *this;
         return tmp -= n;
     }
 
-    std::ptrdiff_t operator-(const DequeIterator& other) const { return ((block * __buf_sz + index) - (other.block * __buf_sz + other.index)); }
+    std::ptrdiff_t operator-(const __DequeIterator& other) const { return ((block * __buf_sz + index) - (other.block * __buf_sz + other.index)); }
 
     T& operator[](std::ptrdiff_t n) const { return *(*this + n); }
 
-    bool operator==(const DequeIterator& rhs) const { return map == rhs.map && block == rhs.block && index == rhs.index; }
-    bool operator!=(const DequeIterator& rhs) const { return !(*this == rhs); }
-    bool operator<(const DequeIterator& rhs) const { return (block < rhs.block) || (block == rhs.block && index < rhs.index); }
-    bool operator>(const DequeIterator& rhs) const { return rhs < *this; }
-    bool operator<=(const DequeIterator& rhs) const { return !(rhs < *this); }
-    bool operator>=(const DequeIterator& rhs) const { return !(*this < rhs); }
+    bool operator==(const __DequeIterator& rhs) const { return map == rhs.map && block == rhs.block && index == rhs.index; }
+    bool operator!=(const __DequeIterator& rhs) const { return !(*this == rhs); }
+    bool operator<(const __DequeIterator& rhs) const { return (block < rhs.block) || (block == rhs.block && index < rhs.index); }
+    bool operator>(const __DequeIterator& rhs) const { return rhs < *this; }
+    bool operator<=(const __DequeIterator& rhs) const { return !(rhs < *this); }
+    bool operator>=(const __DequeIterator& rhs) const { return !(*this < rhs); }
 };
 
 
@@ -98,8 +98,8 @@ public:
     using const_reference = const T&;
     using pointer = T*;
     using const_pointer = const T*;
-    using iterator = DequeIterator<T, __buf_sz>;
-    using const_iterator = DequeIterator<const T, __buf_sz>;
+    using iterator = __DequeIterator<T, __buf_sz>;
+    using const_iterator = __DequeIterator<const T, __buf_sz>;
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
     
