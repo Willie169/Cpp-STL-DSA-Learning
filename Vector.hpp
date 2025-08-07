@@ -13,7 +13,6 @@
 #include <limits>
 #include <memory>
 #include <memory_resource>
-#include <new>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
