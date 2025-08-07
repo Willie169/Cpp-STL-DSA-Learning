@@ -34,13 +34,11 @@ public:
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-
 private:
     [[no_unique_address]] Allocator alloc;
     T* elems;
     std::size_t sz;
     std::size_t cap;
-
 
     constexpr void __new_reserve(std::size_t new_cap) {
         if (new_cap > max_size()) throw std::length_error("Vector");
@@ -56,13 +54,10 @@ private:
         cap = new_cap;
     }
 
-
 public:
     constexpr Vector() noexcept(noexcept(Allocator())) : alloc(Allocator()), elems(nullptr), sz(0), cap(0) {}
-
     
     explicit constexpr Vector(const Allocator& alloc_) noexcept : alloc(alloc_), elems(nullptr), sz(0), cap(0) {}
-
 
     explicit Vector(std::size_t count, const Allocator& alloc_ = Allocator()) : alloc(alloc_), sz(count), cap(count) {
         if (count == 0) elems = nullptr;
@@ -72,7 +67,6 @@ public:
         }
     }
 
-
     constexpr Vector(std::size_t count, const T& value, const Allocator& alloc_ = Allocator()) : alloc(alloc_), sz(count), cap(count) {
         if (count == 0) elems = nullptr;
         else {
@@ -81,20 +75,17 @@ public:
         }
     }
 
-
     template<std::input_iterator InputIt>
     constexpr Vector(InputIt first, InputIt last, const Allocator& alloc_ = Allocator()) : alloc(alloc_), elems(nullptr), sz(0), cap(0) {
         if constexpr (std::random_access_iterator<InputIt>) {
             std::size_t count = static_cast<std::size_t>(std::distance(first, last));
             if (count > 0) {
                 elems = std::allocator_traits<Allocator>::allocate(alloc, count);
-                cap = count;
+                sz = cap = count;
                 for (std::size_t i = 0; i < count; ++i, ++first) std::allocator_traits<Allocator>::construct(alloc, elems + i, *first);
-                sz = count;
             }
         } else for (; first != last; ++first) push_back(*first);
     }
-
 
     constexpr Vector(const Vector& other) : alloc(std::allocator_traits<Allocator>::select_on_container_copy_construction(other.alloc)), elems(nullptr), sz(other.sz), cap(other.cap) {
         if (cap > 0) {
@@ -103,6 +94,7 @@ public:
         }
     }
 
+    constexpr Vector(Vector&& other) noexcept : alloc(std::move(other.alloc)), elems(std::exchange(other.elems, nullptr)), sz(std::exchange(other.sz, 0)), cap(std::exchange(other.cap, 0)) {}
 
     constexpr Vector(const Vector& other, const Allocator& alloc_) : alloc(alloc_), elems(nullptr), sz(other.sz), cap(other.cap) {
         if (cap > 0) {
@@ -110,10 +102,6 @@ public:
             for (std::size_t i = 0; i < sz; ++i) std::allocator_traits<Allocator>::construct(alloc, elems + i, other.elems[i]);
         }
     }
-
-
-    constexpr Vector(Vector&& other) noexcept : alloc(std::move(other.alloc)), elems(std::exchange(other.elems, nullptr)), sz(std::exchange(other.sz, 0)), cap(std::exchange(other.cap, 0)) {}
-
 
     constexpr Vector(Vector&& other, const Allocator& alloc_) noexcept(std::allocator_traits<Allocator>::is_always_equal::value) : alloc(alloc_), elems(nullptr), sz(0), cap(0) {
         if (alloc == other.alloc) {
@@ -130,7 +118,6 @@ public:
         }
     }
 
-
     Vector(std::initializer_list<T> ilist, const Allocator& alloc_ = Allocator()) : alloc(alloc_), elems(nullptr), sz(ilist.size()), cap(ilist.size()) {
         if (cap > 0) {
             elems = std::allocator_traits<Allocator>::allocate(alloc, cap);
@@ -141,7 +128,6 @@ public:
             }
         }
     }
-
 
     constexpr ~Vector() {
         if (elems) {
