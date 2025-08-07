@@ -309,51 +309,45 @@ public:
         sz = 0;
     }
 
-
     constexpr iterator insert(const_iterator pos, const T& value) {
         std::size_t index = pos - elems;
-        if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
-        for (std::size_t i = sz; i > index; --i) {
-            if (i == sz) std::allocator_traits<Allocator>::construct(alloc, elems + i, std::move(elems[i - 1]));
-            else elems[i] = std::move(elems[i - 1]);
-        }
-        if (index < sz) elems[index] = value;
-        else std::allocator_traits<Allocator>::construct(alloc, elems + index, value);
+        if (sz == cap) __new_reserve(sz ? sz * VECTOR_GROW : 1);
+        if (index < sz) {
+            std::allocator_traits<Allocator>::construct(alloc, elems + sz, std::move(elems[sz - 1]));
+            for (T* i = elems + sz - 1; i > elems + index; --i) *i = std::move(*(i - 1));
+            elems[index] = value;
+        } else std::allocator_traits<Allocator>::construct(alloc, insert_pos, value);
         ++sz;
-        return elems + index;
+        return elems + pos;
     }
-
 
     constexpr iterator insert(const_iterator pos, T&& value) {
         std::size_t index = pos - elems;
-        if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
-        for (std::size_t i = sz; i > index; --i) {
-         constexpr void swap(Vector<T, Allocator>   if (i == sz) std::allocator_traits<Allocator>::construct(alloc, elems + i, std::move(elems[i - 1]));
-            else elems[i] = std::move(elems[i - 1]);
-        }
-        if (index < sz) elems[index] = std::move(value);
-        else std::allocator_traits<Allocator>::construct(alloc, elems + index, std::move(value));
+        if (sz == cap) __new_reserve(sz ? sz * VECTOR_GROW : 1);
+        if (index < sz) {
+            std::allocator_traits<Allocator>::construct(alloc, elems + sz, std::move(elems[sz - 1]));
+            for (T* i = elems + sz - 1; i > elems + index; --i) *i = std::move(*(i - 1));
+            elems[index] = std::move(value);
+        } else std::allocator_traits<Allocator>::construct(alloc, insert_pos, std::move(value));
         ++sz;
-        return elems + index;
+        return elems + pos;
     }
-
 
     constexpr iterator insert(const_iterator pos, std::size_t count, const T& value) {
         if (count == 0) return const_cast<iterator>(pos);
         std::size_t index = pos - elems;
-        if (sz + count > cap) reserve(std::max(sz ? sz * VECTOR_GROW : 1, sz + count));
-        for (std::size_t i = sz + count - 1; i >= index + count; --i) {
-            if (i >= sz) std::allocator_traits<Allocator>::construct(alloc, elems + i, std::move(elems[i - count]));
-            else elems[i] = std::move(elems[i - count]);
+        if (sz + count > cap) __new_reserve(std::max(sz ? sz * VECTOR_GROW : 1, sz + count));
+        for (T* i = elems + sz + count - 1; i >= elems + index + count; --i) {
+            if (i >= elems + sz) std::allocator_traits<Allocator>::construct(alloc, i, std::move(*(i - count)));
+            else *i = std::move(*(i - count));
         }
-        for (std::size_t i = index; i < index + count; ++i) {
-            if (i < sz) elems[i] = value;
-            else std::allocator_traits<Allocator>::construct(alloc, elems + i, value);
+        for (T* i = elems + index; i < elems + index + count; ++i) {
+            if (i < elems + sz) *i = value;
+            else std::allocator_traits<Allocator>::construct(alloc, i, value);
         }
         sz += count;
         return elems + index;
     }
-
 
     template<std::input_iterator InputIt>
     constexpr iterator insert(const_iterator pos, InputIt first, InputIt last) {
@@ -367,77 +361,63 @@ public:
         }
     }
 
-
     constexpr iterator insert(const_iterator pos, std::initializer_list<T> ilist) { return insert(pos, ilist.begin(), ilist.end()); }
-
 
     template<class... Args>
     constexpr iterator emplace(const_iterator pos, Args&&... args) {
         std::size_t index = pos - elems;
-        if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
-        for (std::size_t i = sz; i > index; --i) {
-            if (i == sz) {
-                std::allocator_traits<Allocator>::construct(alloc, elems + i, std::move(elems[i - 1]));
-                std::allocator_traits<Allocator>::destroy(alloc, elems + i - 1);
-            } else elems[i] = std::move(elems[i - 1]);
-        }
-        std::allocator_traits<Allocator>::construct(alloc, elems + index, std::forward<Args>(args)...);
+        if (index < sz) {
+            if (sz == cap) __new_reserve(sz ? sz * VECTOR_GROW : 1);
+            std::allocator_traits<Allocator>::construct(alloc, elems + sz, std::move(elems[sz - 1]));
+            std::allocator_traits<Allocator>::destroy(alloc, elems + sz - 1);
+            for (T* i = elems + sz - 1; i > elems + index; --i) *i = std::move(*(i - 1));
+            std::allocator_traits<Allocator>::construct(alloc, elems + index, std::forward<Args>(args)...);
+        } else std::allocator_traits<Allocator>::construct(alloc, insert_pos, std::forward<Args>(args)...);
         ++sz;
         return elems + index;
     }
-
 
     constexpr iterator erase(const_iterator pos) {
         std::size_t index = pos - elems;
         if (index >= sz) return end();
-        std::allocator_traits<Allocator>::destroy(alloc, elems + index);
-        for (std::size_t i = index; i < sz - 1; ++i) {
-            std::allocator_traits<Allocator>::construct(alloc, elems + i, std::move(elems[i + 1]));
-            std::allocator_traits<Allocator>::destroy(alloc, elems + i + 1);
-        }
+        for (T* i = elems + index; i < elems + sz - 1; ++i) *i = std::move(*(i+1));
+        std::allocator_traits<Allocator>::destroy(alloc, elems + sz - 1);
         --sz;
         return elems + index;
     }
 
-
     constexpr iterator erase(const_iterator first, const_iterator last) {
         if (first == last) return const_cast<iterator>(first);
-        std::size_t start = first - elems;
-        std::size_t end_idx = last - elems;
-        if (start >= sz) return this->end();
-        if (end_idx > sz) end_idx = sz;
-        std::size_t count = end_idx - start;
-        for (std::size_t i = start; i < end_idx; ++i) std::allocator_traits<Allocator>::destroy(alloc, elems + i);
-        for (std::size_t i = end_idx; i < sz; ++i) {
-            std::allocator_traits<Allocator>::construct(alloc, elems + i - count, std::move(elems[i]));
-            std::allocator_traits<Allocator>::destroy(alloc, elems + i);
-        }
+        std::size_t index = first - elems;
+        std::size_t end_index = last - elems;
+        if (index >= sz) return elems + sz;
+        if (end_index > sz) end_index = sz;
+        std::size_t count = end_index - index;
+        for (T* i = elems + index; i + count < elems + sz; ++i) *i = std::move(*(i + count));
+        for (T* i = sz - count; i < elems + sz; ++i) std::allocator_traits<Allocator>::destroy(alloc, i);
         sz -= count;
-        return elems + start;
+        return elems + index;
     }
 
 
     constexpr void push_back(const T& value) {
-        if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
+        if (sz == cap) __new_reserve(sz ? sz * VECTOR_GROW : 1);
         std::allocator_traits<Allocator>::construct(alloc, elems + sz, value);
         ++sz;
     }
 
-
     constexpr void push_back(T&& value) {
-        if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
+        if (sz == cap) __new_reserve(sz ? sz * VECTOR_GROW : 1);
         std::allocator_traits<Allocator>::construct(alloc, elems + sz, std::move(value));
         ++sz;
     }
 
-
     template<class... Args>
     constexpr T& emplace_back(Args&&... args) {
-        if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
+        if (sz == cap) __new_reserve(sz ? sz * VECTOR_GROW : 1);
         std::allocator_traits<Allocator>::construct(alloc, elems + sz, std::forward<Args>(args)...);
         return elems[sz++];
     }
-
 
     constexpr void pop_back() {
         if (sz > 0) {
@@ -446,28 +426,21 @@ public:
         }
     }
 
-
     constexpr void resize(std::size_t new_size) {
-        if (new_size > cap) reserve(new_size);
-        if (new_size < sz) {
-            for (std::size_t i = new_size; i < sz; ++i) std::allocator_traits<Allocator>::destroy(alloc, elems + i);
-        } else if (new_size > sz) for (std::size_t i = sz; i < new_size; ++i) std::allocator_traits<Allocator>::construct(alloc, elems + i);
+        if (new_size > cap) __new_reserve(new_size);
+        if (new_size < sz) for (std::size_t i = new_size; i < sz; ++i) std::allocator_traits<Allocator>::destroy(alloc, elems + i);
+        else if (new_size > sz) for (std::size_t i = sz; i < new_size; ++i) std::allocator_traits<Allocator>::construct(alloc, elems + i);
         sz = new_size;
     }
-
 
     constexpr void resize(std::size_t new_size, const T& value) {
-        if (new_size > cap) reserve(new_size);
-        if (new_size < sz) {
-            for (std::size_t i = new_size; i < sz; ++i) std::allocator_traits<Allocator>::destroy(alloc, elems + i);
-        } else if (new_size > sz) for (std::size_t i = sz; i < new_size; ++i) std::allocator_traits<Allocator>::construct(alloc, elems + i, value);
+        if (new_size > cap) __new_reserve(new_size);
+        if (new_size < sz) for (std::size_t i = new_size; i < sz; ++i) std::allocator_traits<Allocator>::destroy(alloc, elems + i);
+        else if (new_size > sz) for (std::size_t i = sz; i < new_size; ++i) std::allocator_traits<Allocator>::construct(alloc, elems + i, value);
         sz = new_size;
     }
 
-
-    constexpr void swap(Vector& other) noexcept(
-        std::allocator_traits<Allocator>::propagate_on_container_swap::value ||
-        std::allocator_traits<Allocator>::is_always_equal::value) {
+    constexpr void swap(Vector& other) noexcept(std::allocator_traits<Allocator>::propagate_on_container_swap::value || std::allocator_traits<Allocator>::is_always_equal::value) {
         if constexpr (std::allocator_traits<Allocator>::propagate_on_container_swap::value) std::swap(alloc, other.alloc);
         std::swap(elems, other.elems);
         std::swap(sz, other.sz);
@@ -475,6 +448,8 @@ public:
     }
 };
 
+template<class InputIt, class Alloc = std::allocator<typename std::iterator_traits<InputIt>::value_type>>
+vector(InputIt, InputIt, Alloc = Alloc()) -> vector<typename std::iterator_traits<InputIt>::value_type, Alloc>;
 
 template<class T, class Allocator>
 constexpr bool operator==(const Vector<T, Allocator>& lhs, const Vector<T, Allocator>& rhs) {
@@ -482,10 +457,8 @@ constexpr bool operator==(const Vector<T, Allocator>& lhs, const Vector<T, Alloc
     return std::equal(lhs.begin(), lhs.end(), rhs.begin());
 }
 
-
 template<class T, class Allocator>
 constexpr auto operator<=>(const Vector<T, Allocator>& lhs, const Vector<T, Allocator>& rhs) { return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end()); }
-
 
 template<class T, class Allocator, class U>
 constexpr typename Vector<T, Allocator>::size_type erase(Vector<T, Allocator>& c, const U& value) {
@@ -495,7 +468,6 @@ constexpr typename Vector<T, Allocator>::size_type erase(Vector<T, Allocator>& c
     return count;
 }
 
-
 template<class T, class Allocator, class Pred>
 constexpr typename Vector<T, Allocator>::size_type erase_if(Vector<T, Allocator>& c, Pred pred) {
     auto it = std::remove_if(c.begin(), c.end(), pred);
@@ -504,54 +476,11 @@ constexpr typename Vector<T, Allocator>::size_type erase_if(Vector<T, Allocator>
     return count;
 }
 
-
 template<class T, class Allocator>
 constexpr void swap(Vector<T, Allocator>& lhs, Vector<T, Allocator>& rhs) noexcept(noexcept(lhs.swap(rhs))) { lhs.swap(rhs); }
-
 
 namespace pmr {
     template<class T>
     using vector = Vector<T, std::pmr::polymorphic_allocator<T>>;
 }
-
-
-template<class Allocator>
-Vector(const Allocator&) -> Vector<typename std::allocator_traits<Allocator>::value_type, Allocator>;
-
-
-template<class Allocator>
-Vector(std::size_t, const Allocator&) -> Vector<typename std::allocator_traits<Allocator>::value_type, Allocator>;
-
-
-template<class T>
-Vector(std::size_t, const T&) -> Vector<T>;
-
-template<class T, class Allocator>
-Vector(std::size_t, const T&, const Allocator&) -> Vector<T, Allocator>;
-
-
-template<std::input_iterator InputIt>
-Vector(InputIt, InputIt) -> Vector<typename std::iterator_traits<InputIt>::value_type>;
-
-
-template<std::input_iterator InputIt, class Allocator>
-Vector(InputIt, InputIt, const Allocator&) -> Vector<typename std::iterator_traits<InputIt>::value_type, Allocator>;
-
-
-template<class T>
-Vector(std::initializer_list<T>) -> Vector<T>;
-
-
-template<class T, class Allocator>
-Vector(std::initializer_list<T>, const Allocator&) -> Vector<T, Allocator>;
-
-
-template<std::ranges::input_range R, class Allocator>
-requires (!std::convertible_to<R, std::size_t>)
-Vector(std::from_range_t, R&&, const Allocator&) -> Vector<std::ranges::range_value_t<R>, Allocator>;
-
-
-template<class Allocator>
-requires { typename Allocator::value_type; }
-Vector(Allocator) -> Vector<typename Allocator::value_type, Allocator>;
 
