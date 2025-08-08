@@ -138,9 +138,9 @@ private:
     std::size_t map_sz, sb, si, eb, ei;
     static constexpr std::size_t __buf_sz = sizeof(T) < 512 ? std::size_t(512 / sizeof(T)) : std::size_t(1);
 
-    using AllocTraits = std::allocator_traits<Allocator>;
-    using MapAllocator = typename AllocTraits::template rebind_alloc<T*>;
-    using MapAllocTraits = std::allocator_traits<MapAllocator>;
+    using AllocatorTraits = std::allocator_traits<Allocator>;
+    using MapAllocator = typename AllocatorTraits::template rebind_alloc<T*>;
+    using MapAllocatorTraits = std::allocator_traits<MapAllocator>;
 
 
 public:    
@@ -158,17 +158,17 @@ public:
         }
         map_sz = (count + __buf_sz - 1) / __buf_sz + 2;
         MapAllocator map_alloc(alloc);
-        map = MapAllocTraits::allocate(map_alloc, map_sz);
+        map = MapAllocatorTraits::allocate(map_alloc, map_sz);
         std::uninitialized_fill(map, map + map_sz, nullptr);
         sb = 1;
         eb = map_sz - 2;
-        for (std::size_t i = sb; i <= eb; ++i) map[i] = AllocTraits::allocate(alloc, __buf_sz);
+        for (std::size_t i = sb; i <= eb; ++i) map[i] = AllocatorTraits::allocate(alloc, __buf_sz);
         si = 0;
         ei = count % __buf_sz;
         if (ei == 0 && count != 0) ei = __buf_sz;
         for (std::size_t i = sb; i <= eb; ++i) { std::size_t s = (i == sb) ? si : 0;
             std::size_t e = (i == eb) ? ei : __buf_sz;
-            for (std::size_t j = s; j < e; ++j) { AllocTraits::construct(alloc, &map[i][j]); }
+            for (std::size_t j = s; j < e; ++j) { AllocatorTraits::construct(alloc, &map[i][j]); }
         }
     }
 
@@ -181,18 +181,18 @@ public:
         }
         map_sz = (count + __buf_sz - 1) / __buf_sz + 2;
         MapAllocator map_alloc(alloc);
-        map = MapAllocTraits::allocate(map_alloc, map_sz);
+        map = MapAllocatorTraits::allocate(map_alloc, map_sz);
         std::uninitialized_fill(map, map + map_sz, nullptr);
         sb = 1;
         eb = map_sz - 2;
-        for (std::size_t i = sb; i <= eb; ++i) map[i] = AllocTraits::allocate(alloc, __buf_sz);
+        for (std::size_t i = sb; i <= eb; ++i) map[i] = AllocatorTraits::allocate(alloc, __buf_sz);
         si = 0;
         ei = count % __buf_sz;
         if (ei == 0 && count != 0) ei = __buf_sz;
         for (std::size_t i = sb; i <= eb; ++i) {
             std::size_t s = (i == sb) ? si : 0;
             std::size_t e = (i == eb) ? ei : __buf_sz;
-            for (std::size_t j = s; j < e; ++j) AllocTraits::construct(alloc, &map[i][j], value);
+            for (std::size_t j = s; j < e; ++j) AllocatorTraits::construct(alloc, &map[i][j], value);
         }
     }
 
@@ -210,9 +210,9 @@ public:
             sb = 1;
             eb = map_sz - 2;
             MapAllocator map_alloc(alloc);
-            map = MapAllocTraits::allocate(map_alloc, map_sz);
+            map = MapAllocatorTraits::allocate(map_alloc, map_sz);
             std::uninitialized_fill(map, map + map_sz, nullptr);
-            for (std::size_t i = sb; i <= eb; ++i) map[i] = AllocTraits::allocate(alloc, __buf_sz);
+            for (std::size_t i = sb; i <= eb; ++i) map[i] = AllocatorTraits::allocate(alloc, __buf_sz);
             si = 0;
             ei = count % __buf_sz;
             if (ei == 0 && count != 0) ei = __buf_sz;
@@ -220,7 +220,7 @@ public:
                 std::size_t s = (i == sb) ? si : 0;
                 std::size_t e = (i == eb) ? ei : __buf_sz;
                 for (std::size_t j = s; j < e; ++j) {
-                    AllocTraits::construct(alloc, &map[i][j], *first);
+                    AllocatorTraits::construct(alloc, &map[i][j], *first);
                     ++first;
                 }
             }
@@ -231,7 +231,7 @@ public:
     }
 
 
-    Deque(const Deque& other) : Deque(other, AllocTraits::select_on_container_copy_construction(other.alloc)) {}
+    Deque(const Deque& other) : Deque(other, AllocatorTraits::select_on_container_copy_construction(other.alloc)) {}
 
 
     Deque(const Deque& other, const Allocator& a) : alloc(a), map_sz(other.map_sz), sb(other.sb), si(other.si), eb(other.eb), ei(other.ei) {
@@ -240,13 +240,13 @@ public:
             return;
         }
         MapAllocator map_alloc(alloc);
-        map = MapAllocTraits::allocate(map_alloc, map_sz);
+        map = MapAllocatorTraits::allocate(map_alloc, map_sz);
         std::uninitialized_fill(map, map + map_sz, nullptr);
-        for (std::size_t i = sb; i <= eb; ++i) map[i] = AllocTraits::allocate(alloc, __buf_sz);
+        for (std::size_t i = sb; i <= eb; ++i) map[i] = AllocatorTraits::allocate(alloc, __buf_sz);
         for (std::size_t i = sb; i <= eb; ++i) {
             std::size_t s = (i == sb) ? si : 0;
             std::size_t e = (i == eb) ? ei : __buf_sz;
-            for (std::size_t j = s; j < e; ++j) AllocTraits::construct(alloc, &map[i][j], other.map[i][j]);
+            for (std::size_t j = s; j < e; ++j) AllocatorTraits::construct(alloc, &map[i][j], other.map[i][j]);
         }
     }
 
@@ -264,11 +264,11 @@ public:
         }
         map_sz = (ilist.size() + __buf_sz - 1) / __buf_sz + 2;
         MapAllocator map_alloc(alloc);
-        map = MapAllocTraits::allocate(map_alloc, map_sz);
+        map = MapAllocatorTraits::allocate(map_alloc, map_sz);
         std::uninitialized_fill(map, map + map_sz, nullptr);
         sb = 1;
         eb = map_sz - 2;
-        for (std::size_t i = sb; i <= eb; ++i) map[i] = AllocTraits::allocate(alloc, __buf_sz);
+        for (std::size_t i = sb; i <= eb; ++i) map[i] = AllocatorTraits::allocate(alloc, __buf_sz);
         si = 0;
         ei = ilist.size() % __buf_sz;
         if (ei == 0 && ilist.size() != 0) ei = __buf_sz;
@@ -276,7 +276,7 @@ public:
         for (std::size_t i = sb; i <= eb; ++i) {
             std::size_t s = (i == sb) ? si : 0;
             std::size_t e = (i == eb) ? ei : __buf_sz;
-            for (std::size_t j = s; j < e; ++j, ++k) AllocTraits::construct(alloc, &map[i][j], *k);
+            for (std::size_t j = s; j < e; ++j, ++k) AllocatorTraits::construct(alloc, &map[i][j], *k);
         }
     }
 
@@ -287,18 +287,18 @@ public:
             if (map[i]) {
                 std::size_t start = (i == sb) ? si : 0;
                 std::size_t end   = (i == eb) ? ei : __buf_sz;
-                for (std::size_t j = start; j < end; ++j) AllocTraits::destroy(alloc, &map[i][j]);
-                AllocTraits::deallocate(alloc, map[i], __buf_sz);
+                for (std::size_t j = start; j < end; ++j) AllocatorTraits::destroy(alloc, &map[i][j]);
+                AllocatorTraits::deallocate(alloc, map[i], __buf_sz);
             }
         }
         MapAllocator map_alloc(alloc);
-        MapAllocTraits::deallocate(map_alloc, map, map_sz);
+        MapAllocatorTraits::deallocate(map_alloc, map, map_sz);
     }
 
 
     Deque& operator=(const Deque& other) {
         if (this != &other) {
-            if constexpr (AllocTraits::propagate_on_container_copy_assignment::value) {
+            if constexpr (AllocatorTraits::propagate_on_container_copy_assignment::value) {
                 if (alloc != other.alloc) {
                     clear();
                     deallocate_map();
@@ -312,9 +312,9 @@ public:
     }
 
 
-    Deque& operator=(Deque&& other) noexcept(AllocTraits::is_always_equal::value || AllocTraits::propagate_on_container_move_assignment::value) {
+    Deque& operator=(Deque&& other) noexcept(AllocatorTraits::is_always_equal::value || AllocatorTraits::propagate_on_container_move_assignment::value) {
         if (this != &other) {
-            if constexpr (AllocTraits::propagate_on_container_move_assignment::value) {
+            if constexpr (AllocatorTraits::propagate_on_container_move_assignment::value) {
                 clear();
                 deallocate_map();
                 alloc = std::move(other.alloc);
@@ -349,11 +349,11 @@ public:
         }
         map_sz = (ilist.size() + __buf_sz - 1) / __buf_sz + 2;
         MapAllocator map_alloc(alloc);
-        map = MapAllocTraits::allocate(map_alloc, map_sz);
+        map = MapAllocatorTraits::allocate(map_alloc, map_sz);
         std::uninitialized_fill(map, map + map_sz, nullptr);
         sb = 1;
         eb = map_sz - 2;
-        for (std::size_t i = sb; i <= eb; ++i) map[i] = AllocTraits::allocate(alloc, __buf_sz);
+        for (std::size_t i = sb; i <= eb; ++i) map[i] = AllocatorTraits::allocate(alloc, __buf_sz);
         si = 0;
         ei = ilist.size() % __buf_sz;
         if (ei == 0 && ilist.size() != 0) ei = __buf_sz;
@@ -361,7 +361,7 @@ public:
         for (std::size_t i = sb; i <= eb; ++i) {
             std::size_t s = (i == sb) ? si : 0;
             std::size_t e = (i == eb) ? ei : __buf_sz;
-            for (std::size_t j = s; j < e; ++j, ++k) AllocTraits::construct(alloc, &map[i][j], *k);
+            for (std::size_t j = s; j < e; ++j, ++k) AllocatorTraits::construct(alloc, &map[i][j], *k);
         }
         return *this;
     }
@@ -443,7 +443,7 @@ public:
 
     std::size_t max_size() const noexcept {
         return std::min(std::numeric_limits<difference_type>::max(),
-                       AllocTraits::max_size(alloc));
+                       AllocatorTraits::max_size(alloc));
     }
 
 
@@ -459,12 +459,12 @@ public:
         std::size_t need = eb - sb + 1;
         if (need == map_sz) return;
         MapAllocator map_alloc(alloc);
-        T** new_map = MapAllocTraits::allocate(map_alloc, need);
+        T** new_map = MapAllocatorTraits::allocate(map_alloc, need);
         std::uninitialized_fill(new_map, new_map + need, nullptr);
         for (std::size_t i = 0; i < need; ++i) new_map[i] = map[sb + i];
-        for (std::size_t i = 0; i < sb; ++i) if (map[i]) AllocTraits::deallocate(alloc, map[i], __buf_sz);
-        for (std::size_t i = eb + 1; i < map_sz; ++i) if (map[i]) AllocTraits::deallocate(alloc, map[i], __buf_sz);
-        MapAllocTraits::deallocate(map_alloc, map, map_sz);
+        for (std::size_t i = 0; i < sb; ++i) if (map[i]) AllocatorTraits::deallocate(alloc, map[i], __buf_sz);
+        for (std::size_t i = eb + 1; i < map_sz; ++i) if (map[i]) AllocatorTraits::deallocate(alloc, map[i], __buf_sz);
+        MapAllocatorTraits::deallocate(map_alloc, map, map_sz);
         map = new_map;
         eb = eb - sb;
         sb = 0;
@@ -481,7 +481,7 @@ public:
         for (std::size_t i = sb; i <= eb; ++i) {
             std::size_t s = (i == sb) ? si : 0;
             std::size_t e = (i == eb) ? ei : __buf_sz;
-            for (std::size_t j = s; j < e; ++j) AllocTraits::destroy(alloc, &map[i][j]);
+            for (std::size_t j = s; j < e; ++j) AllocatorTraits::destroy(alloc, &map[i][j]);
         }
         sb = eb = map_sz / 2;
         si = ei = __buf_sz / 2;
@@ -533,15 +533,15 @@ public:
             push_front(T{});
             iterator new_pos = begin() + index;
             std::move(begin(), new_pos, begin() + 1);
-            AllocTraits::destroy(alloc, &*new_pos);
-            AllocTraits::construct(alloc, &*new_pos, std::forward<Args>(args)...);
+            AllocatorTraits::destroy(alloc, &*new_pos);
+            AllocatorTraits::construct(alloc, &*new_pos, std::forward<Args>(args)...);
             return new_pos;
         } else {
             push_back(T{});
             iterator new_pos = begin() + index;
             std::move_backward(new_pos, end() - 1, end());
-            AllocTraits::destroy(alloc, &*new_pos);
-            AllocTraits::construct(alloc, &*new_pos, std::forward<Args>(args)...);
+            AllocatorTraits::destroy(alloc, &*new_pos);
+            AllocatorTraits::construct(alloc, &*new_pos, std::forward<Args>(args)...);
             return new_pos;
         }
     }
@@ -585,21 +585,21 @@ public:
         if (ei != __buf_sz - 1) ++ei;
         else if (eb != map_sz - 1) {
             ++eb;
-            if (!map[eb]) map[eb] = AllocTraits::allocate(alloc, __buf_sz);
+            if (!map[eb]) map[eb] = AllocatorTraits::allocate(alloc, __buf_sz);
             ei = 0;
         } else {
             reallocate_map_back();
             ++eb;
-            if (!map[eb]) map[eb] = AllocTraits::allocate(alloc, __buf_sz);
+            if (!map[eb]) map[eb] = AllocatorTraits::allocate(alloc, __buf_sz);
             ei = 0;
         }
-        AllocTraits::construct(alloc, &map[eb][ei], std::forward<Args>(args)...);
+        AllocatorTraits::construct(alloc, &map[eb][ei], std::forward<Args>(args)...);
         return map[eb][ei];
     }
 
 
     void pop_back() {
-        AllocTraits::destroy(alloc, &map[eb][ei]);
+        AllocatorTraits::destroy(alloc, &map[eb][ei]);
         if (ei != 0) --ei;
         else {
             --eb;
@@ -618,21 +618,21 @@ public:
         if (si != 0) --si;
         else if (sb != 0) {
             --sb;
-            if (!map[sb]) map[sb] = AllocTraits::allocate(alloc, __buf_sz);
+            if (!map[sb]) map[sb] = AllocatorTraits::allocate(alloc, __buf_sz);
             si = __buf_sz - 1;
         } else {
             reallocate_map_front();
             --sb;
-            if (!map[sb]) map[sb] = AllocTraits::allocate(alloc, __buf_sz);
+            if (!map[sb]) map[sb] = AllocatorTraits::allocate(alloc, __buf_sz);
             si = __buf_sz - 1;
         }
-        AllocTraits::construct(alloc, &map[sb][si], std::forward<Args>(args)...);
+        AllocatorTraits::construct(alloc, &map[sb][si], std::forward<Args>(args)...);
         return map[sb][si];
     }
 
 
     void pop_front() {
-        AllocTraits::destroy(alloc, &map[sb][si]);
+        AllocatorTraits::destroy(alloc, &map[sb][si]);
         if (si != __buf_sz - 1) ++si;
         else {
             ++sb;
@@ -656,8 +656,8 @@ public:
     }
 
 
-    void swap(Deque& other) noexcept(AllocTraits::is_always_equal::value || AllocTraits::propagate_on_container_swap::value) {
-        if constexpr (AllocTraits::propagate_on_container_swap::value) std::swap(alloc, other.alloc);
+    void swap(Deque& other) noexcept(AllocatorTraits::is_always_equal::value || AllocatorTraits::propagate_on_container_swap::value) {
+        if constexpr (AllocatorTraits::propagate_on_container_swap::value) std::swap(alloc, other.alloc);
         std::swap(map, other.map);
         std::swap(map_sz, other.map_sz);
         std::swap(sb, other.sb);
@@ -670,9 +670,9 @@ public:
 private:
     void deallocate_map() {
         if (!map) return;
-        for (std::size_t i = 0; i < map_sz; ++i) if (map[i]) AllocTraits::deallocate(alloc, map[i], __buf_sz);
+        for (std::size_t i = 0; i < map_sz; ++i) if (map[i]) AllocatorTraits::deallocate(alloc, map[i], __buf_sz);
         MapAllocator map_alloc(alloc);
-        MapAllocTraits::deallocate(map_alloc, map, map_sz);
+        MapAllocatorTraits::deallocate(map_alloc, map, map_sz);
         map = nullptr;
         map_sz = 0;
     }
@@ -681,21 +681,21 @@ private:
     void initialize_empty_deque() {
         map_sz = 3;
         MapAllocator map_alloc(alloc);
-        map = MapAllocTraits::allocate(map_alloc, map_sz);
+        map = MapAllocatorTraits::allocate(map_alloc, map_sz);
         std::uninitialized_fill(map, map + map_sz, nullptr);
         sb = eb = 1;
         si = ei = __buf_sz / 2;
-        map[1] = AllocTraits::allocate(alloc, __buf_sz);
+        map[1] = AllocatorTraits::allocate(alloc, __buf_sz);
     }
 
 
     void reallocate_map_back() {
         std::size_t new_map_sz = map_sz * 2;
         MapAllocator map_alloc(alloc);
-        T** new_map = MapAllocTraits::allocate(map_alloc, new_map_sz);
+        T** new_map = MapAllocatorTraits::allocate(map_alloc, new_map_sz);
         std::uninitialized_fill(new_map, new_map + new_map_sz, nullptr);
         for (std::size_t i = 0; i < map_sz; ++i) new_map[i] = map[i];
-        MapAllocTraits::deallocate(map_alloc, map, map_sz);
+        MapAllocatorTraits::deallocate(map_alloc, map, map_sz);
         map = new_map;
         map_sz = new_map_sz;
     }
@@ -705,10 +705,10 @@ private:
         std::size_t new_map_sz = map_sz * 2;
         std::size_t offset = map_sz;
         MapAllocator map_alloc(alloc);
-        T** new_map = MapAllocTraits::allocate(map_alloc, new_map_sz);
+        T** new_map = MapAllocatorTraits::allocate(map_alloc, new_map_sz);
         std::uninitialized_fill(new_map, new_map + new_map_sz, nullptr);
         for (std::size_t i = 0; i < map_sz; ++i) new_map[i + offset] = map[i];
-        MapAllocTraits::deallocate(map_alloc, map, map_sz);
+        MapAllocatorTraits::deallocate(map_alloc, map, map_sz);
         map = new_map;
         sb += offset;
         eb += offset;
@@ -719,25 +719,25 @@ private:
     void ensure_capacity_for_insert(std::size_t count) {        
         while (map_sz < (size() + count + __buf_sz - 1) / __buf_sz + 2) reallocate_map_back();
         std::size_t needed_blocks = (size() + count + __buf_sz - 1) / __buf_sz;
-        for (std::size_t i = sb; i < sb + needed_blocks && i < map_sz; ++i) if (!map[i]) map[i] = AllocTraits::allocate(alloc, __buf_sz);
+        for (std::size_t i = sb; i < sb + needed_blocks && i < map_sz; ++i) if (!map[i]) map[i] = AllocatorTraits::allocate(alloc, __buf_sz);
     }
 };
 
 
-template<class T, class Alloc>
-bool operator==(const Deque<T, Alloc>& lhs, const Deque<T, Alloc>& rhs) { return lhs.operator==(rhs); }
+template<class T, class Allocator>
+bool operator==(const Deque<T, Allocator>& lhs, const Deque<T, Allocator>& rhs) { return lhs.operator==(rhs); }
 
 
-template<class T, class Alloc>
-auto operator<=>(const Deque<T, Alloc>& lhs, const Deque<T, Alloc>& rhs) { return lhs.operator<=>(rhs); }
+template<class T, class Allocator>
+auto operator<=>(const Deque<T, Allocator>& lhs, const Deque<T, Allocator>& rhs) { return lhs.operator<=>(rhs); }
 
 
-template<class T, class Alloc>
-void swap(Deque<T, Alloc>& lhs, Deque<T, Alloc>& rhs) noexcept(noexcept(lhs.swap(rhs))) { lhs.swap(rhs); }
+template<class T, class Allocator>
+void swap(Deque<T, Allocator>& lhs, Deque<T, Allocator>& rhs) noexcept(noexcept(lhs.swap(rhs))) { lhs.swap(rhs); }
 
 
-template<class T, class Alloc, class U>
-typename Deque<T, Alloc>::size_type erase(Deque<T, Alloc>& c, const U& value) {
+template<class T, class Allocator, class U>
+typename Deque<T, Allocator>::size_type erase(Deque<T, Allocator>& c, const U& value) {
     auto it = std::remove(c.begin(), c.end(), value);
     auto r = std::distance(it, c.end());
     c.erase(it, c.end());
@@ -745,8 +745,8 @@ typename Deque<T, Alloc>::size_type erase(Deque<T, Alloc>& c, const U& value) {
 }
 
 
-template<class T, class Alloc, class Pred>
-typename Deque<T, Alloc>::size_type erase_if(Deque<T, Alloc>& c, Pred pred) {
+template<class T, class Allocator, class Pred>
+typename Deque<T, Allocator>::size_type erase_if(Deque<T, Allocator>& c, Pred pred) {
     auto it = std::remove_if(c.begin(), c.end(), pred);
     auto r = std::distance(it, c.end());
     c.erase(it, c.end());
@@ -754,12 +754,12 @@ typename Deque<T, Alloc>::size_type erase_if(Deque<T, Alloc>& c, Pred pred) {
 }
 
 
-template<class InputIt, class Alloc = std::allocator<typename std::iterator_traits<InputIt>::value_type>>
-Deque(InputIt, InputIt, Alloc = Alloc()) -> Deque<typename std::iterator_traits<InputIt>::value_type, Alloc>;
+template<class InputIt, class Allocator = std::allocator<typename std::iterator_traits<InputIt>::value_type>>
+Deque(InputIt, InputIt, Allocator = Allocator()) -> Deque<typename std::iterator_traits<InputIt>::value_type, Allocator>;
 
 
-template<class T, class Alloc = std::allocator<T>>
-Deque(std::initializer_list<T>, Alloc = Alloc()) -> Deque<T, Alloc>;
+template<class T, class Allocator = std::allocator<T>>
+Deque(std::initializer_list<T>, Allocator = Allocator()) -> Deque<T, Allocator>;
 
 
 namespace pmr {

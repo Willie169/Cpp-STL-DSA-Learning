@@ -468,8 +468,8 @@ public:
 };
 
 
-template<class InputIt, class Alloc = std::allocator<typename std::iterator_traits<InputIt>::value_type>>
-Vector(InputIt, InputIt, Alloc = Alloc()) -> Vector<typename std::iterator_traits<InputIt>::value_type, Alloc>;
+template<class InputIt, class Allocator = std::allocator<typename std::iterator_traits<InputIt>::value_type>>
+Vector(InputIt, InputIt, Allocator = Allocator()) -> Vector<typename std::iterator_traits<InputIt>::value_type, Allocator>;
 
 template<class T, class Allocator>
 constexpr bool operator==(const Vector<T, Allocator>& lhs, const Vector<T, Allocator>& rhs) {
@@ -524,188 +524,124 @@ public:
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
     class reference {
-        _word_type* ptr;
-        std::size_t bit;
+        _word_type* data;
+        size_type offset;
 
     public:
-        constexpr reference(const bit_reference&) = default;
-        reference(_word_type* p, std::size_t b) : ptr(p), bit(b) {}
+        reference(_word_type* d, size_type o) : data(d), offset(o) {}
+        constexpr reference(const reference&) = default;
         constexpr ~reference() = default;
 
-        constexpr reference& operator=(bool x) noexcept {
-            if (x) *ptr |= _word_type(1) << bit;
-            else *ptr &= ~(_word_type(1) << bit);
+        reference& operator=(bool x) noexcept {
+            size_type word = offset / bits_per_word;
+            size_type bit = offset % bits_per_word;
+            if (x) data[word] |= _word_type(1) << bit;
+            else data[word] &= ~(_word_type(1) << bit);
             return *this;
         }
 
-        constexpr reference& operator=(const bit_reference& other) noexcept { return *this = bool(other); }
-        operator bool() const noexcept { return (*ptr >> bit) & _word_type(1); }
-        void flip() noexcept { *ptr ^= _word_type(1) << bit; }
+        reference& operator=(const reference& other) noexcept {
+            return *this = bool(other);
+        }
+
+        operator bool() const noexcept {
+            size_type word = offset / bits_per_word;
+            size_type bit = offset % bits_per_word;
+            return (data[word] >> bit) & _word_type(1);
+        }
+
+        void flip() noexcept {
+            size_type word = offset / bits_per_word;
+            size_type bit = offset % bits_per_word;
+            data[word] ^= _word_type(1) << bit;
+        }
     };
 
 
     class iterator {
-        _word_type* ptr;
-        std::size_t bit;
+        _word_type* data;
+        size_type offset;
 
     public:
         using iterator_category = std::random_access_iterator_tag;
+        using value_type = bool;
+        using difference_type = std::ptrdiff_t;
+        using reference = Vector::reference;
+        using pointer = void;
 
-        constexpr iterator() = default;
-        constexpr iterator(_word_type* p, std::size_t b) : ptr(p), bit(b) {}
-        constexpr ~iterator() = default;
-        constexpr reference operator*() const noexcept { return reference(ptr, bit); }
+        iterator() = default;
+        iterator(_word_type* d, size_type o) : data(d), offset(o) {}
+        reference operator*() const { return reference(data, offset); }
 
-        iterator& operator++() noexcept {
-            if (++bit == 8) {
-                ++ptr;
-                bit = 0;
-            }
-            return *this;
-        }
+        iterator& operator++() { ++offset; return *this; }
+        iterator operator++(int) { iterator tmp = *this; ++*this; return tmp; }
 
-        iterator operator++(int) noexcept {
-            iterator tmp = *this;
-            ++(*this);
-            return tmp;
-        }
+        iterator& operator--() { --offset; return *this; }
+        iterator operator--(int) { iterator tmp = *this; --*this; return tmp; }
 
-        iterator& operator--() noexcept {
-            if (bit == 0) {
-                --ptr;
-                bit = 7;
-            } else {
-                --bit;
-            }
-            return *this;
-        }
+        iterator& operator+=(difference_type n) { offset += n; return *this; }
+        iterator operator+(difference_type n) const { return iterator(data, offset + n); }
 
-        iterator operator--(int) noexcept {
-            iterator tmp = *this;
-            --(*this);
-            return tmp;
-        }
+        iterator& operator-=(difference_type n) { offset -= n; return *this; }
+        iterator operator-(difference_type n) const { return iterator(data, offset - n); }
 
-        iterator& operator+=(difference_type n) noexcept {
-            difference_type total = static_cast<difference_type>(bit) + n;
-            ptr += total / 8;
-            bit = static_cast<std::size_t>(total % 8);
-            if (bit < 0) {
-                bit += 8;
-                --ptr;
-            }
-            return *this;
-        }
+        difference_type operator-(const iterator& rhs) const { return offset - rhs.offset; }
 
-        iterator operator+(difference_type n) const noexcept {
-            iterator tmp = *this;
-            return tmp += n;
-        }
-
-        iterator& operator-=(difference_type n) noexcept { return *this += -n; }
-
-        iterator operator-(difference_type n) const noexcept {
-            iterator tmp = *this;
-            return tmp -= n;
-        }
-
-        difference_type operator-(const iterator& rhs) const noexcept { return (ptr - rhs.ptr) * 8 + static_cast<difference_type>(bit - rhs.bit); }
-        bool operator==(const iterator& rhs) const noexcept { return ptr == rhs.ptr && bit == rhs.bit; }
-        std::strong_ordering operator<=>(const iterator& rhs) const noexcept { return (*this - rhs) <=> 0; }
+        auto operator<=>(const iterator& rhs) const = default;
     };
 
 
     class const_iterator {
-        const _word_type* ptr;
-        std::size_t bit;
+        const _word_type* data;
+        size_type offset;
 
     public:
         using iterator_category = std::random_access_iterator_tag;
+        using value_type = bool;
+        using difference_type = std::ptrdiff_t;
+        using reference = bool;
+        using pointer = void;
 
-        constexpr const_iterator() = default;
-        constexpr const_iterator(const _word_type* p, std::size_t b) : ptr(p), bit(b) {}
-        constexpr ~const_iterator() = default;
-        constexpr reference operator*() const noexcept { return (*ptr >> bit) & _word_type(1); }
-
-        const_iterator& operator++() noexcept {
-            if (++bit == 8) {
-                ++ptr;
-                bit = 0;
-            }
-            return *this;
+        const_iterator() = default;
+        const_iterator(const _word_type* d, size_type o) : data(d), offset(o) {}
+        bool operator*() const {
+            size_type word = offset / bits_per_word;
+            size_type bit = offset % bits_per_word;
+            return (data[word] >> bit) & _word_type(1);
         }
 
-        const_iterator operator++(int) noexcept {
-            const_iterator tmp = *this;
-            ++(*this);
-            return tmp;
-        }
+        const_iterator& operator++() { ++offset; return *this; }
+        const_iterator operator++(int) { const_iterator tmp = *this; ++*this; return tmp; }
 
-        const_iterator& operator--() noexcept {
-            if (bit == 0) {
-                --ptr;
-                bit = 7;
-            } else {
-                --bit;
-            }
-            return *this;
-        }
+        const_iterator& operator--() { --offset; return *this; }
+        const_iterator operator--(int) { const_iterator tmp = *this; --*this; return tmp; }
 
-        const_iterator operator--(int) noexcept {
-            const_iterator tmp = *this;
-            --(*this);
-            return tmp;
-        }
+        const_iterator& operator+=(difference_type n) { offset += n; return *this; }
+        const_iterator operator+(difference_type n) const { return const_iterator(data, offset + n); }
 
-        const_iterator& operator+=(difference_type n) noexcept {
-            difference_type total = static_cast<difference_type>(bit) + n;
-            ptr += total / 8;
-            bit = static_cast<std::size_t>(total % 8);
-            if (bit < 0) {
-                bit += 8;
-                --ptr;
-            }
-            return *this;
-        }
+        const_iterator& operator-=(difference_type n) { offset -= n; return *this; }
+        const_iterator operator-(difference_type n) const { return const_iterator(data, offset - n); }
 
-        const_iterator operator+(difference_type n) const noexcept {
-            const_iterator tmp = *this;
-            return tmp += n;
-        }
+        difference_type operator-(const const_iterator& rhs) const { return offset - rhs.offset; }
 
-        const_iterator& operator-=(difference_type n) noexcept { return *this += -n; }
-
-        const_iterator operator-(difference_type n) const noexcept {
-            const_iterator tmp = *this;
-            return tmp -= n;
-        }
-
-        difference_type operator-(const const_iterator& rhs) const noexcept { return (ptr - rhs.ptr) * 8 + static_cast<difference_type>(bit - rhs.bit); }
-        bool operator==(const const_iterator& rhs) const noexcept { return ptr == rhs.ptr && bit == rhs.bit; }
-        std::strong_ordering operator<=>(const const_iterator& rhs) const noexcept { return (*this - rhs) <=> 0; }
+        auto operator<=>(const const_iterator& rhs) const = default;
     };
 
 
 private:
     Vector<_word_type, Allocator> elems;
-    std::size_t last_word_bit_index;
-    static constexpr std::size_t bits_per_word = sizeof(_word_type) * CHAR_BIT;
-    static constexpr std::size_t word_index(std::size_t pos) noexcept { return pos / bits_per_word; }
-    static constexpr std::size_t bit_index(std::size_t pos) noexcept { return pos % bits_per_word; }
-    static constexpr _word_type bit_mask(std::size_t pos) noexcept { return _word_type(1) << bit_index(pos); }
+    size_type sz;
+    static constexpr size_type word_index(size_type pos) noexcept { return pos / bits_per_word; }
+    static constexpr size_type bit_index(size_type pos) noexcept { return pos % bits_per_word; }
+    static constexpr _word_type bit_mask(size_type pos) noexcept { return _word_type(1) << bit_index(pos); }
 
 public:
-    constexpr Vector() noexcept(noexcept(Allocator())) : alloc(Allocator()), elems(nullptr), last_word_bit_index(0) {}
-    
-    explicit constexpr Vector(const Allocator& alloc_) noexcept : alloc(alloc_), elems(nullptr), last_word_bit_index(0) {}
+// TODO
+    constexpr Vector() noexcept(noexcept(Allocator())) : alloc(Allocator()), elems(nullptr), sz(0), cap(0) {}
 
-    explicit Vector(std::size_t count, const Allocator& alloc_ = Allocator()) : alloc(alloc_), last_word_bit_index(bits_index(count)) {
+    explicit constexpr Vector(const Allocator& alloc_) noexcept : alloc(alloc_), elems(nullptr), sz(0), cap(0) {}
 
-
-
-
-
-
+    explicit Vector(std::size_t count, const Allocator& alloc_ = Allocator()) : alloc(alloc_), sz(count), cap(count) {
         if (count == 0) elems = nullptr;
         else {
             elems = std::allocator_traits<Allocator>::allocate(alloc, count);
@@ -1116,10 +1052,14 @@ public:
         std::swap(sz, other.sz);
         std::swap(cap, other.cap);
     }
+
+    constexpr void filp() {};
+
+    static constexpr void swap(reference x, reference y) {};
 };
 
-template<class InputIt, class Alloc = std::allocator<typename std::iterator_traits<InputIt>::value_type>>
-Vector(InputIt, InputIt, Alloc = Alloc()) -> Vector<typename std::iterator_traits<InputIt>::value_type, Alloc>;
+template<class InputIt, class Allocator = std::allocator<typename std::iterator_traits<InputIt>::value_type>>
+Vector(InputIt, InputIt, Allocator = Allocator()) -> Vector<typename std::iterator_traits<InputIt>::value_type, Allocator>;
 
 template<class T, class Allocator>
 constexpr bool operator==(const Vector<T, Allocator>& lhs, const Vector<T, Allocator>& rhs) {
@@ -1148,4 +1088,7 @@ constexpr typename Vector<T, Allocator>::size_type erase_if(Vector<T, Allocator>
     c.erase(it, c.end());
     return count;
 }
+
+template<class Allocator>
+struct hash<std::vector<bool, Allocator>> {};
 
