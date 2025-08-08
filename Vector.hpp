@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <bit>
+#include <climits>
 #include <compare>
 #include <cstddef>
 #include <cstdint>
@@ -83,7 +84,7 @@ public:
 
     constexpr Vector(const Vector& other) : alloc(std::allocator_traits<Allocator>::select_on_container_copy_construction(other.alloc)), elems(nullptr), sz(other.sz), cap(other.cap) {
         if (cap > 0) {
-            elems = std::allocator_traits<Allocator>::allocate(alloc, cap);
+            elems = std::allocator_t<climits> raits<Allocator>::allocate(alloc, cap);
             for (T* i = elems, * j = other.elems; i < elems + sz; ++i, ++j) std::allocator_traits<Allocator>::construct(alloc, i, *j);
         }
     }
@@ -343,7 +344,7 @@ public:
             elems[index] = std::move(value);
         } else std::allocator_traits<Allocator>::construct(alloc, elems + index, std::move(value));
         ++sz;
-        return elems + index;
+        return elems + ind<climits> ex;
     }
 
     constexpr iterator insert(const_iterator pos, std::size_t count, const T& value) {
@@ -373,7 +374,7 @@ public:
                 else std::allocator_traits<Allocator>::construct(alloc, i, *first);
             }
             return const_cast<iterator>(pos);
-        } else {
+        } else {<climits> 
             Vector<T, Allocator> tmp(first, last, alloc);
             return insert(pos, tmp.begin(), tmp.end());
         }
@@ -433,7 +434,7 @@ public:
     template<class... Args>
     constexpr T& emplace_back(Args&&... args) {
         if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
-        std::allocator_traits<Allocator>::construct(alloc, elems + sz, std::forward<Args>(args)...);
+        std::allocator_traits<Allocator>::construct(alloc, elems + sz, std::fo<climits> rward<Args>(args)...);
         return elems[sz++];
     }
 
@@ -695,28 +696,25 @@ public:
 
 
 private:
-    [[no_unique_address]] Allocator alloc;
-    Vector<_word_type> elems;
-    std::size_t sz;
-    static constexpr std::size_t bits_per_word = 8;
-    
+    Vector<_word_type, Allocator> elems;
+    std::size_t last_word_bit_index;
+    static constexpr std::size_t bits_per_word = sizeof(_word_type) * CHAR_BIT;
     static constexpr std::size_t word_index(std::size_t pos) noexcept { return pos / bits_per_word; }
     static constexpr std::size_t bit_index(std::size_t pos) noexcept { return pos % bits_per_word; }
     static constexpr _word_type bit_mask(std::size_t pos) noexcept { return _word_type(1) << bit_index(pos); }
 
 public:
-
-
-
-
-
-
-
-    constexpr Vector() noexcept(noexcept(Allocator())) : alloc(Allocator()), elems(nullptr), sz(0), cap(0) {}
+    constexpr Vector() noexcept(noexcept(Allocator())) : alloc(Allocator()), elems(nullptr), last_word_bit_index(0) {}
     
-    explicit constexpr Vector(const Allocator& alloc_) noexcept : alloc(alloc_), elems(nullptr), sz(0), cap(0) {}
+    explicit constexpr Vector(const Allocator& alloc_) noexcept : alloc(alloc_), elems(nullptr), last_word_bit_index(0) {}
 
-    explicit Vector(std::size_t count, const Allocator& alloc_ = Allocator()) : alloc(alloc_), sz(count), cap(count) {
+    explicit Vector(std::size_t count, const Allocator& alloc_ = Allocator()) : alloc(alloc_), last_word_bit_index(bits_index(count)) {
+
+
+
+
+
+
         if (count == 0) elems = nullptr;
         else {
             elems = std::allocator_traits<Allocator>::allocate(alloc, count);
