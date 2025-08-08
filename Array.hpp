@@ -23,10 +23,8 @@ struct Array {
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-private:
     T elems[N == 0 ? 1 : N];
 
-public:
     constexpr T& at(std::size_t index) {
         if (index >= N) throw std::out_of_range("Array");
         return elems[index];
@@ -107,7 +105,7 @@ template<class T, std::size_t N>
 struct std::tuple_size<Array<T, N>> : std::integral_constant<std::size_t, N> {};
 
 template< class T >
-constexpr std::size_t tuple_size_v = tuple_size<T>::value;
+constexpr std::size_t tuple_size_v = std::tuple_size<T>::value;
 
 template<std::size_t I, class T, std::size_t N>
 struct std::tuple_element<I, Array<T, N>> { using type = T; };
