@@ -509,7 +509,7 @@ template<class Allocator = std::allocator<unsigned char>>
 requires std::is_integral_v<typename Allocator::value_type>
 class Vector<bool, Allocator> {
 public:
-    using _word_type = Allocator::value_type;
+    using _word_type = typename Allocator::value_type;
     using value_type = bool;
     using allocator_type = Allocator;
     using size_type = std::size_t;
@@ -539,7 +539,7 @@ public:
         }
 
         constexpr reference& operator=(const bit_reference& other) noexcept { return *this = bool(other); }
-        operator bool() const noexcept { return (*ptr >> bit) & 1; }
+        operator bool() const noexcept { return (*ptr >> bit) & _word_type(1); }
         void flip() noexcept { *ptr ^= _word_type(1) << bit; }
     };
 
@@ -549,9 +549,6 @@ public:
         std::size_t bit;
 
     public:
-        using value_type = bool;
-        using reference = bool;
-        using difference_type = std::ptrdiff_t;
         using iterator_category = std::random_access_iterator_tag;
 
         constexpr iterator() = default;
@@ -623,15 +620,12 @@ public:
         std::size_t bit;
 
     public:
-        using value_type = bool;
-        using reference = bool;
-        using difference_type = std::ptrdiff_t;
         using iterator_category = std::random_access_iterator_tag;
 
         constexpr const_iterator() = default;
         constexpr const_iterator(const _word_type* p, std::size_t b) : ptr(p), bit(b) {}
         constexpr ~const_iterator() = default;
-        constexpr reference operator*() const noexcept { return (*ptr >> bit) & 1; }
+        constexpr reference operator*() const noexcept { return (*ptr >> bit) & _word_type(1); }
 
         const_iterator& operator++() noexcept {
             if (++bit == 8) {
