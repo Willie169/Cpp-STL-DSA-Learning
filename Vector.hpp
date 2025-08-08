@@ -505,9 +505,10 @@ namespace pmr {
 
 
 template<class Allocator = std::allocator<unsigned char>>
+requires std::is_integral_v<typename Allocator::value_type>
 class Vector<bool, Allocator> {
 public:
-    using _word_type = unsigned char;
+    using _word_type = Allocator::value_type;
     using value_type = bool;
     using allocator_type = Allocator;
     using size_type = std::size_t;
@@ -521,10 +522,8 @@ public:
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-
+    template<class _word_type = _word_type>
     class reference {
-        using _word_type = unsigned char;
-
         _word_type* ptr;
         std::size_t bit;
 
@@ -535,7 +534,7 @@ public:
 
         constexpr reference& operator=(bool x) noexcept {
             if (x) *ptr |= _word_type(1) << bit;
-            else *ptr &= ~(word_type(1) << bit);
+            else *ptr &= ~(_word_type(1) << bit);
             return *this;
         }
 
@@ -545,15 +544,14 @@ public:
     };
 
 
+    template<class _word_type = _word_type>
     class iterator {
-        using _word_type = unsigned char;
-
         _word_type* ptr;
         std::size_t bit;
 
     public:
         using value_type = bool;
-        using reference = reference;
+        using reference = bool;
         using difference_type = std::ptrdiff_t;
         using iterator_category = std::random_access_iterator_tag;
 
@@ -621,24 +619,23 @@ public:
     };
 
 
-    class const_interator {
-        using _word_type = unsigned char;
-
-        _word_type* ptr;
+    template<class _word_type = _word_type>
+    class const_iterator {
+        const _word_type* ptr;
         std::size_t bit;
 
     public:
         using value_type = bool;
         using reference = bool;
         using difference_type = std::ptrdiff_t;
-        using interator_category = std::random_access_interator_tag;
+        using iterator_category = std::random_access_iterator_tag;
 
-        constexpr const_interator() = default;
-        constexpr const_interator(const _word_type* p, std::size_t b) : ptr(p), bit(b) {}
-        constexpr ~const_interator() = default;
+        constexpr const_iterator() = default;
+        constexpr const_iterator(const _word_type* p, std::size_t b) : ptr(p), bit(b) {}
+        constexpr ~const_iterator() = default;
         constexpr reference operator*() const noexcept { return (*ptr >> bit) & 1; }
 
-        const_interator& operator++() noexcept {
+        const_iterator& operator++() noexcept {
             if (++bit == 8) {
                 ++ptr;
                 bit = 0;
@@ -646,13 +643,13 @@ public:
             return *this;
         }
 
-        const_interator operator++(int) noexcept {
-            const_interator tmp = *this;
+        const_iterator operator++(int) noexcept {
+            const_iterator tmp = *this;
             ++(*this);
             return tmp;
         }
 
-        const_interator& operator--() noexcept {
+        const_iterator& operator--() noexcept {
             if (bit == 0) {
                 --ptr;
                 bit = 7;
@@ -662,13 +659,13 @@ public:
             return *this;
         }
 
-        const_interator operator--(int) noexcept {
-            const_interator tmp = *this;
+        const_iterator operator--(int) noexcept {
+            const_iterator tmp = *this;
             --(*this);
             return tmp;
         }
 
-        const_interator& operator+=(difference_type n) noexcept {
+        const_iterator& operator+=(difference_type n) noexcept {
             difference_type total = static_cast<difference_type>(bit) + n;
             ptr += total / 8;
             bit = static_cast<std::size_t>(total % 8);
@@ -679,21 +676,21 @@ public:
             return *this;
         }
 
-        const_interator operator+(difference_type n) const noexcept {
-            const_interator tmp = *this;
+        const_iterator operator+(difference_type n) const noexcept {
+            const_iterator tmp = *this;
             return tmp += n;
         }
 
-        const_interator& operator-=(difference_type n) noexcept { return *this += -n; }
+        const_iterator& operator-=(difference_type n) noexcept { return *this += -n; }
 
-        const_interator operator-(difference_type n) const noexcept {
-            const_interator tmp = *this;
+        const_iterator operator-(difference_type n) const noexcept {
+            const_iterator tmp = *this;
             return tmp -= n;
         }
 
-        difference_type operator-(const const_interator& rhs) const noexcept { return (ptr - rhs.ptr) * 8 + static_cast<difference_type>(bit - rhs.bit); }
-        bool operator==(const const_interator& rhs) const noexcept { return ptr == rhs.ptr && bit == rhs.bit; }
-        std::strong_ordering operator<=>(const const_interator& rhs) const noexcept { return (*this - rhs) <=> 0; }
+        difference_type operator-(const const_iterator& rhs) const noexcept { return (ptr - rhs.ptr) * 8 + static_cast<difference_type>(bit - rhs.bit); }
+        bool operator==(const const_iterator& rhs) const noexcept { return ptr == rhs.ptr && bit == rhs.bit; }
+        std::strong_ordering operator<=>(const const_iterator& rhs) const noexcept { return (*this - rhs) <=> 0; }
     };
 
 
@@ -708,6 +705,7 @@ private:
     static constexpr _word_type bit_mask(std::size_t pos) noexcept { return _word_type(1) << bit_index(pos); }
 
 public:
+
 
 
 
