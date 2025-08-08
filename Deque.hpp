@@ -133,11 +133,10 @@ public:
 
 
 private:
+    [[no_unique_address]] Allocator alloc;
     T** map;
     std::size_t map_sz, sb, si, eb, ei;
-    static const size_t __buf_sz = sizeof(T) < 512 ? size_t(512 / sizeof(T)) : size_t(1);
-    [[no_unique_address]] Allocator alloc;
-
+    static constexpr std::size_t __buf_sz = sizeof(T) < 512 ? std::size_t(512 / sizeof(T)) : std::size_t(1);
 
     using AllocTraits = std::allocator_traits<Allocator>;
     using MapAllocator = typename AllocTraits::template rebind_alloc<T*>;
