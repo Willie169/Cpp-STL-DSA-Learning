@@ -523,7 +523,6 @@ public:
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-    template<class _word_type = _word_type>
     class reference {
         _word_type* ptr;
         std::size_t bit;
@@ -545,7 +544,6 @@ public:
     };
 
 
-    template<class _word_type = _word_type>
     class iterator {
         _word_type* ptr;
         std::size_t bit;
@@ -620,7 +618,6 @@ public:
     };
 
 
-    template<class _word_type = _word_type>
     class const_iterator {
         const _word_type* ptr;
         std::size_t bit;
