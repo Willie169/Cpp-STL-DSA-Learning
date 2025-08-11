@@ -522,6 +522,7 @@ public:
     class const_iterator;
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+    static constexpr const std::size_t bits_per_word sizeof(_word_type) * CHAR_BIT;
 
     class reference {
         _word_type* data;
@@ -636,174 +637,64 @@ private:
     static constexpr _word_type bit_mask(size_type pos) noexcept { return _word_type(1) << bit_index(pos); }
 
 public:
-// TODO
-    constexpr Vector() noexcept(noexcept(Allocator())) : alloc(Allocator()), elems(nullptr), sz(0), cap(0) {}
+    constexpr Vector() noexcept(noexcept(Allocator())) : elems(), sz(0), cap(0) {}
 
-    explicit constexpr Vector(const Allocator& alloc_) noexcept : alloc(alloc_), elems(nullptr), sz(0), cap(0) {}
+    explicit constexpr Vector(const Allocator& alloc_) noexcept : elems(alloc_), sz(0) {}
 
-    explicit Vector(std::size_t count, const Allocator& alloc_ = Allocator()) : alloc(alloc_), sz(count), cap(count) {
-        if (count == 0) elems = nullptr;
-        else {
-            elems = std::allocator_traits<Allocator>::allocate(alloc, count);
-            for (T* i = elems; i < elems + count; ++i) std::allocator_traits<Allocator>::construct(alloc, i);
-        }
-    }
-
-    constexpr Vector(std::size_t count, const T& value, const Allocator& alloc_ = Allocator()) : alloc(alloc_), sz(count), cap(count) {
-        if (count == 0) elems = nullptr;
-        else {
-            elems = std::allocator_traits<Allocator>::allocate(alloc, count);
-            for (T* i = elems; i < elems + count; ++i) std::allocator_traits<Allocator>::construct(alloc, i, value);
+    explicit Vector(size_type count, const Allocator& alloc_ = Allocator()) : elems((count + bits_per_word - 1) / bits_per_word, alloc_), sz(count) {}
+    
+    constexpr Vector(size_type count, const bool& value, const Allocator& alloc_ = Allocator()) : elems((count + bits_per_word - 1) / bits_per_word, alloc_), sz(count) {
+        if (value) {
+            std::fill(elems.begin(), elems.end(), ~_word_type(0));
+            size_type excess = elems.size() * bits_per_word - sz;
+            if (excess > 0) elems.back() &= (_word_type(~_word_type(0)) >> excess);
         }
     }
 
     template<std::input_iterator InputIt>
-    constexpr Vector(InputIt first, InputIt last, const Allocator& alloc_ = Allocator()) : alloc(alloc_), elems(nullptr), sz(0), cap(0) {
-        if constexpr (std::random_access_iterator<InputIt>) {
-            std::size_t count = static_cast<std::size_t>(std::distance(first, last));
-            if (count > 0) {
-                elems = std::allocator_traits<Allocator>::allocate(alloc, count);
-                sz = cap = count;
-                for (T* i = elems; i < elems + count; ++i, ++first) std::allocator_traits<Allocator>::construct(alloc, i, *first);
-            }
-        } else for (; first != last; ++first) push_back(*first);
+    constexpr Vector(InputIt first, InputIt last, const Allocator& alloc_ = Allocator()) : elems(alloc_), sz(0) { for (; first != last; ++first) push_back(static_cast<bool>(*first)); }
+
+    constexpr Vector(const Vector& other) : elems(other.elems), sz(other.sz) {}
+
+    constexpr Vector(Vector&& other) noexcept : elems(std::move(other.elems)), sz(other.sz) { other.sz = 0; }
+
+    constexpr Vector(const Vector& other, const Allocator& alloc_) : elems(other.elems, alloc_), sz(other.sz) {}
+
+    constexpr Vector(Vector&& other, const Allocator& alloc_) : elems(std::move(other.elems), alloc_), sz(other.sz) { other.sz = 0; }
+
+    Vector(std::initializer_list<bool> ilist, const Allocator& alloc_ = Allocator()) : elems(alloc_), sz(0) {
+        reserve(ilist.size());
+        for (bool v : ilist) push_back(v);
     }
 
-    constexpr Vector(const Vector& other) : alloc(std::allocator_traits<Allocator>::select_on_container_copy_construction(other.alloc)), elems(nullptr), sz(other.sz), cap(other.cap) {
-        if (cap > 0) {
-            elems = std::allocator_traits<Allocator>::allocate(alloc, cap);
-            for (T* i = elems, * j = other.elems; i < elems + sz; ++i, ++j) std::allocator_traits<Allocator>::construct(alloc, i, *j);
-        }
-    }
-
-    constexpr Vector(Vector&& other) noexcept : alloc(std::move(other.alloc)), elems(nullptr), sz(0), cap(0) {
-        if constexpr (std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value) {
-            alloc = std::move(other.alloc);
-            elems = std::exchange(other.elems, nullptr);
-            sz = std::exchange(other.sz, 0);
-            cap = std::exchange(other.cap, 0);
-        } else if (alloc == other.alloc) {
-            elems = std::exchange(other.elems, nullptr);
-            sz = std::exchange(other.sz, 0);
-            cap = std::exchange(other.cap, 0);
-        } else {
-            if (other.sz > 0) {
-                sz = cap = other.sz;
-                elems = std::allocator_traits<Allocator>::allocate(alloc, cap);
-                for (T* i = other.elems, * j = elems; i < other.elems + other.sz; ++i, ++j) std::allocator_traits<Allocator>::construct(alloc, j, *i);
-            }
-            other.destroy_deallocate();
-            other.elems = nullptr;
-            other.sz = other.cap = 0;
-        }
-    }
-
-    constexpr Vector(const Vector& other, const Allocator& alloc_) : alloc(alloc_), elems(nullptr), sz(other.sz), cap(other.cap) {
-        if (cap > 0) {
-            elems = std::allocator_traits<Allocator>::allocate(alloc, cap);
-            for (T* i = elems, * j = other.elems; i < elems + sz; ++i, ++j) std::allocator_traits<Allocator>::construct(alloc, i, *j);
-        }
-    }
-
-    constexpr Vector(Vector&& other, const Allocator& alloc_) : alloc(alloc_), elems(nullptr), sz(0), cap(0) {
-        if (alloc == other.alloc) {
-            elems = std::exchange(other.elems, nullptr);
-            sz = std::exchange(other.sz, 0);
-            cap = std::exchange(other.cap, 0);
-        } else {
-            sz = other.sz;
-            cap = other.cap;
-            if (cap > 0) {
-                elems = std::allocator_traits<Allocator>::allocate(alloc, cap);
-                for (T* i = elems, * j = other.elems; i < elems + sz; ++i, ++j) std::allocator_traits<Allocator>::construct(alloc, i, std::move(*j));
-            }
-        }
-    }
-
-    Vector(std::initializer_list<T> ilist, const Allocator& alloc_ = Allocator()) : alloc(alloc_), elems(nullptr), sz(ilist.size()), cap(ilist.size()) {
-        if (cap > 0) {
-            elems = std::allocator_traits<Allocator>::allocate(alloc, cap);
-            for (T* i = const_cast<T*>(ilist.begin()), * j = elems; i < const_cast<T*>(ilist.end()); ++i, ++j) std::allocator_traits<Allocator>::construct(alloc, j, *i);
-        }
-    }
-
-    constexpr ~Vector() {
-        if (elems) {
-            for (T* i = elems; i < elems + sz; ++i) std::allocator_traits<Allocator>::destroy(alloc, i);
-            std::allocator_traits<Allocator>::deallocate(alloc, elems, cap);
-        }
-    }
+    constexpr ~Vector() = default;
 
     constexpr Vector& operator=(const Vector& other) {
-        if (this != &other) {
-            if constexpr (std::allocator_traits<Allocator>::propagate_on_container_copy_assignment::value && alloc != other.alloc) {
-                destroy_deallocate();
-                alloc = other.alloc;
-                cap = other.sz;
-                elems = std::allocator_traits<Allocator>::allocate(alloc, cap);
-            } else if (other.sz > cap) {
-                destroy_deallocate();
-                cap = other.sz;
-                elems = std::allocator_traits<Allocator>::allocate(alloc, cap);
-            } else if (elems) for (T* i = elems + other.sz; i < elems + sz; ++i) std::allocator_traits<Allocator>::destroy(alloc, i);
-            for (T* i = other.elems, * j = elems; i < other.elems + other.sz; ++i, ++j) {
-                if (i < elems + sz) *j = *i;
-                else std::allocator_traits<Allocator>::construct(alloc, j, *i);
-            }
-            sz = other.sz;
-        }
+        elems = other.elems;
+        sz = other.sz;
         return *this;
     }
 
     constexpr Vector& operator=(Vector&& other) noexcept(std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value || std::allocator_traits<Allocator>::is_always_equal::value) {
-        if (this != &other) {
-            if constexpr (std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value) {
-                destroy_deallocate();
-                alloc = std::move(other.alloc);
-                elems = std::exchange(other.elems, nullptr);
-                sz = std::exchange(other.sz, 0);
-                cap = std::exchange(other.cap, 0);
-            } else if (alloc == other.alloc) {
-                destroy_deallocate();
-                elems = std::exchange(other.elems, nullptr);
-                sz = std::exchange(other.sz, 0);
-                cap = std::exchange(other.cap, 0);
-            } else {
-                if (other.sz > cap) {
-                    destroy_deallocate();
-                    cap = other.sz;
-                    elems = std::allocator_traits<Allocator>::allocate(alloc, cap);
-                } else if (elems) for (T* i = elems + other.sz; i < elems + sz; ++i) std::allocator_traits<Allocator>::destroy(alloc, i);
-                for (T* i = other.elems, * j = elems; i < other.elems + other.sz; ++i, ++j) {
-                    if (i < elems + sz) *j = *i;
-                    else std::allocator_traits<Allocator>::construct(alloc, j, *i);
-                }
-                sz = other.sz;
-                other.elems = nullptr;
-                other.sz = other.cap = 0;
-            }
-        }
+        elems = other.elems;
+        sz = other.sz;
         return *this;
     }
 
-    constexpr Vector& operator=(std::initializer_list<T> ilist) {
+    constexpr Vector& operator=(std::initializer_list<bool> ilist) {
         assign(ilist);
         return *this;
     }
 
-    constexpr void assign(std::size_t count, const T& value) {
-        if (count > cap) {
-            destroy_deallocate();
-            elems = std::allocator_traits<Allocator>::allocate(alloc, count);
-            cap = count;
-        } else if (elems) for (T* i = elems + count; i < elems + sz; ++i) std::allocator_traits<Allocator>::destroy(alloc, i);
-        for (T* i = elems; i < elems + count; ++i) {
-            if (i < elems + sz) *i = value;
-            else std::allocator_traits<Allocator>::construct(alloc, i, value);
-        }
+    constexpr void assign(std::size_t count, const bool& value) {
+        if (value) {
+            elems.assign(count + bits_per_word - 1) / bits_per_word, ~_word_type(0));
+            size_type excess = elems.size() * bits_per_word - count;
+            if (excess > 0) elems.back() &= (_word_type(~_word_type(0)) >> excess);
+        } else elems.assign(count + bits_per_word - 1) / bits_per_word, _word_type(0));
         sz = count;
     }
-
+//TODO
     template<std::input_iterator InputIt>
     constexpr void assign(InputIt first, InputIt last) {
         if constexpr (std::random_access_iterator<InputIt>) {
