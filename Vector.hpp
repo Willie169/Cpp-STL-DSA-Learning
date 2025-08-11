@@ -522,7 +522,7 @@ public:
     class const_iterator;
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-    static constexpr const std::size_t bits_per_word sizeof(_word_type) * CHAR_BIT;
+    static constexpr std::size_t bits_per_word sizeof(_word_type) * CHAR_BIT;
 
     class reference {
         _word_type* data;
