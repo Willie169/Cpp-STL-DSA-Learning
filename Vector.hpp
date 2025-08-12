@@ -84,7 +84,7 @@ public:
 
     constexpr Vector(const Vector& other) : alloc(std::allocator_traits<Allocator>::select_on_container_copy_construction(other.alloc)), elems(nullptr), sz(other.sz), cap(other.cap) {
         if (cap > 0) {
-            elems = std::allocator_t<climits> raits<Allocator>::allocate(alloc, cap);
+            elems = std::allocator_traits<Allocator>::allocate(alloc, cap);
             for (T* i = elems, * j = other.elems; i < elems + sz; ++i, ++j) std::allocator_traits<Allocator>::construct(alloc, i, *j);
         }
     }
@@ -344,7 +344,7 @@ public:
             elems[index] = std::move(value);
         } else std::allocator_traits<Allocator>::construct(alloc, elems + index, std::move(value));
         ++sz;
-        return elems + ind<climits> ex;
+        return elems + index;
     }
 
     constexpr iterator insert(const_iterator pos, std::size_t count, const T& value) {
@@ -374,7 +374,7 @@ public:
                 else std::allocator_traits<Allocator>::construct(alloc, i, *first);
             }
             return const_cast<iterator>(pos);
-        } else {<climits> 
+        } else {
             Vector<T, Allocator> tmp(first, last, alloc);
             return insert(pos, tmp.begin(), tmp.end());
         }
@@ -434,7 +434,7 @@ public:
     template<class... Args>
     constexpr T& emplace_back(Args&&... args) {
         if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
-        std::allocator_traits<Allocator>::construct(alloc, elems + sz, std::fo<climits> rward<Args>(args)...);
+        std::allocator_traits<Allocator>::construct(alloc, elems + sz, std::forward<Args>(args)...);
         return elems[sz++];
     }
 
