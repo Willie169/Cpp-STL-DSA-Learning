@@ -21,6 +21,7 @@
 
 
 template<class T, class Allocator = std::allocator<T>>
+requires std::is_same_v<T, typename Allocator::value_type>
 class Vector {
 public:
     using value_type = T;
@@ -72,7 +73,8 @@ public:
 
     template<std::input_iterator InputIt>
     constexpr Vector(InputIt first, InputIt last, const Allocator& alloc_ = Allocator()) : alloc(alloc_), elems(nullptr), sz(0), cap(0) {
-        if constexpr (std::random_access_iterator<InputIt>) {
+        if constexpr (std::forward_iterator<InputIt>) {
+            if (first == last) return const_cast<iterator>(pos);
             std::size_t count = static_cast<std::size_t>(std::distance(first, last));
             if (count > 0) {
                 elems = std::allocator_traits<Allocator>::allocate(alloc, count);
@@ -219,7 +221,7 @@ public:
 
     template<std::input_iterator InputIt>
     constexpr void assign(InputIt first, InputIt last) {
-        if constexpr (std::random_access_iterator<InputIt>) {
+        if constexpr (std::forward_iterator<InputIt>) {
             std::size_t count = static_cast<std::size_t>(std::distance(first, last));
             if (count > cap) {
                 destroy_deallocate();
@@ -285,6 +287,7 @@ public:
 
     constexpr void reserve(std::size_t new_cap) {
         if (new_cap <= cap) return;
+        if (new_cap > max_size()) throw std::length_error("Vector");
         T* new_elems = std::allocator_traits<Allocator>::allocate(alloc, new_cap);
         if constexpr (std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>) {
             for (T* i = elems, * j = new_elems; i < elems + sz; ++i, ++j) std::allocator_traits<Allocator>::construct(alloc, j, std::move(*i));
@@ -365,8 +368,8 @@ public:
 
     template<std::input_iterator InputIt>
     constexpr iterator insert(const_iterator pos, InputIt first, InputIt last) {
-        if (first == last) return const_cast<iterator>(pos);
-        if constexpr (std::random_access_iterator<InputIt>) {
+        if constexpr (std::forward_iterator<InputIt>) {
+            if (first == last) return const_cast<iterator>(pos);
             std::size_t count = static_cast<std::size_t>(std::distance(first, last));
             if (sz + count > cap) reserve(std::max(sz ? sz * VECTOR_GROW : 1, sz + count));
             for (T* i = elems; i < elems + count; ++i, ++first) {
@@ -506,7 +509,6 @@ namespace pmr {
 
 
 template<class Allocator = std::allocator<unsigned char>>
-requires std::is_integral_v<typename Allocator::value_type>
 class Vector<bool, Allocator> {
 public:
     using _word_type = typename Allocator::value_type;
@@ -517,6 +519,7 @@ public:
     class reference;
     using const_reference = bool;
     using pointer = typename std::allocator_traits<Allocator>::pointer;
+    constexpr iterator insert(const_iterator pos, const T& value) {
     using const_pointer = typename std::allocator_traits<Allocator>::const_pointer;
     class iterator;
     class const_iterator;
@@ -564,11 +567,11 @@ public:
         size_type offset;
 
     public:
-        using iterator_category = std::random_access_iterator_tag;
-        using value_type = bool;
         using difference_type = std::ptrdiff_t;
-        using reference = Vector::reference;
+        using value_type = bool;
         using pointer = void;
+        using reference = reference;
+        using iterator_category = std::random_access_iterator_tag;
 
         iterator() = default;
         iterator(_word_type* d, size_type o) : data(d), offset(o) {}
@@ -597,11 +600,11 @@ public:
         size_type offset;
 
     public:
-        using iterator_category = std::random_access_iterator_tag;
-        using value_type = bool;
         using difference_type = std::ptrdiff_t;
-        using reference = bool;
+        using value_type = bool;
         using pointer = void;
+        using reference = bool;
+        using iterator_category = std::random_access_iterator_tag;
 
         const_iterator() = default;
         const_iterator(const _word_type* d, size_type o) : data(d), offset(o) {}
@@ -688,66 +691,61 @@ public:
 
     constexpr void assign(std::size_t count, const bool& value) {
         if (value) {
-            elems.assign(count + bits_per_word - 1) / bits_per_word, ~_word_type(0));
+            elems.assign((count + bits_per_word - 1) / bits_per_word, ~_word_type(0));
             size_type excess = elems.size() * bits_per_word - count;
             if (excess > 0) elems.back() &= (_word_type(~_word_type(0)) >> excess);
-        } else elems.assign(count + bits_per_word - 1) / bits_per_word, _word_type(0));
+        } else elems.assign((count + bits_per_word - 1) / bits_per_word, _word_type(0));
         sz = count;
     }
-//TODO
+
     template<std::input_iterator InputIt>
     constexpr void assign(InputIt first, InputIt last) {
-        if constexpr (std::random_access_iterator<InputIt>) {
+        if constexpr (std::forward_iterator<InputIt>) {
             std::size_t count = static_cast<std::size_t>(std::distance(first, last));
-            if (count > cap) {
-                destroy_deallocate();
-                elems = std::allocator_traits<Allocator>::allocate(alloc, count);
-                cap = count;
-            } else if (elems) for (T* i = elems + count; i < elems + sz; ++i) std::allocator_traits<Allocator>::destroy(alloc, i);
-            for (T* i = elems; i < elems + count; ++i, ++first) {
-                if (i < elems + sz) *i = *first;
-                else std::allocator_traits<Allocator>::construct(alloc, i, *first);
+            assign(count, false);
+            for (std::size_t pos; first != last; ++first, ++pos) {
+                if (static_cast<bool>(*first)) elems[word_index(pos)] |= bit_mask(pos);
             }
             sz = count;
         } else {
-            clear();
-            for (; first != last; ++first) push_back(*first);
+            for (; first != last; ++first) {
+                if (sz % bits_per_word == 0) elems.push_back(_word_type(0));
+                if (static_cast<bool>(*first)) elems[word_index(sz)] |= bit_mask(sz);
+                ++sz;
+            }
         }
     }
 
     constexpr void assign(std::initializer_list<T> ilist) { assign(ilist.begin(), ilist.end()); }
 
-    constexpr allocator_type get_allocator() const noexcept { return alloc; }
+    constexpr allocator_type get_allocator() const noexcept { return elems.get_allocator; }
 
-    constexpr T& at(std::size_t index) {
+    constexpr reference at(std::size_t index) {
         if (index >= sz) throw std::out_of_range("Vector");
-        return elems[index];
+        return (*this)[index];
     }
 
-    constexpr const T& at(std::size_t index) const {
+    constexpr bool at(std::size_t index) const {
         if (index >= sz) throw std::out_of_range("Vector");
-        return elems[index];
+        return (*this)[index];
     }
 
-    constexpr T& operator[](std::size_t index) { return elems[index]; }
-    constexpr const T& operator[](std::size_t index) const { return elems[index]; }
+    constexpr reference operator[](size_type pos) { return reference(elems.data(), pos); }
+    constexpr bool operator[](size_type pos) const { return (elems.data()[word_index(index)] >> bit_index(index)) & _word_type(1); }
 
-    constexpr T& front() { return elems[0]; }
-    constexpr const T& front() const { return elems[0]; }
+    constexpr T& front() { return (*this)[0]; }
+    constexpr const T& front() const { return (*this)[0]; }
 
-    constexpr T& back() { return elems[sz - 1]; }
-    constexpr const T& back() const { return elems[sz - 1]; }
+    constexpr T& back() { return (*this)[sz - 1]; }
+    constexpr const T& back() const { return (*this)[sz - 1]; }
+    
+    constexpr iterator begin() noexcept { return iterator(elems.data(), 0); }
+    constexpr const_iterator begin() const noexcept { return const_iterator(elems.data(), 0); }
+    constexpr const_iterator cbegin() const noexcept { return const_iterator(elems.data(), 0); }
 
-    constexpr T* data() noexcept { return elems; }
-    constexpr const T* data() const noexcept { return elems; }
-
-    constexpr iterator begin() noexcept { return elems; }
-    constexpr const_iterator begin() const noexcept { return elems; }
-    constexpr const_iterator cbegin() const noexcept { return elems; }
-
-    constexpr iterator end() noexcept { return elems + sz; }
-    constexpr const_iterator end() const noexcept { return elems + sz; }
-    constexpr const_iterator cend() const noexcept { return elems + sz; }
+    constexpr iterator end() noexcept { return iterator(elems.data(), sz); }
+    constexpr const_iterator end() const noexcept { return const_iterator(elems.data(), sz); }
+    constexpr const_iterator cend() const noexcept { return const_iterator(elems.data(), sz); }
 
     constexpr reverse_iterator rbegin() noexcept { return reverse_iterator(end()); }
     constexpr const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator(cend()); }
@@ -759,189 +757,116 @@ public:
 
     constexpr bool empty() const noexcept { return sz == 0; }
     constexpr std::size_t size() const noexcept { return sz; }
-    constexpr std::size_t max_size() const noexcept { return std::min(std::allocator_traits<Allocator>::max_size(alloc), static_cast<std::size_t>(std::numeric_limits<difference_type>::max())); }
+    constexpr std::size_t max_size() const noexcept { return elems.max_size() * bits_per_word; }
 
     constexpr void reserve(std::size_t new_cap) {
-        if (new_cap <= cap) return;
-        T* new_elems = std::allocator_traits<Allocator>::allocate(alloc, new_cap);
-        if constexpr (std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>) {
-            for (T* i = elems, * j = new_elems; i < elems + sz; ++i, ++j) std::allocator_traits<Allocator>::construct(alloc, j, std::move(*i));
-        } else for (T* i = elems, * j = new_elems; i < elems + sz; ++i, ++j) std::allocator_traits<Allocator>::construct(alloc, j, *i);
-        for (T* i = elems; i < elems + sz; ++i) std::allocator_traits<Allocator>::destroy(alloc, i);
-        if (elems) std::allocator_traits<Allocator>::deallocate(alloc, elems, cap);
-        elems = new_elems;
-        cap = new_cap;
+        elems.reserve((new_cap + bits_per_word - 1) / bits_per_word);
     }
 
-    constexpr std::size_t capacity() const noexcept { return cap; }
+    constexpr std::size_t capacity() const noexcept { return elems.capacity() * bits_per_word; }
 
-    constexpr void shrink_to_fit() {
-        if (cap != sz) {
-            if (sz == 0) {
-                if (elems) {
-                    std::allocator_traits<Allocator>::deallocate(alloc, elems, cap);
-                    elems = nullptr;
-                    cap = 0;
-                }
-            } else {
-                T* new_elems = std::allocator_traits<Allocator>::allocate(alloc, sz);
-                for (T* i = new_elems, * j = elems; i < new_elems + sz; ++i, ++j) {
-                    std::allocator_traits<Allocator>::construct(alloc, i, std::move(*j));
-                    std::allocator_traits<Allocator>::destroy(alloc, j);
-                }
-                std::allocator_traits<Allocator>::deallocate(alloc, elems, cap);
-                elems = new_elems;
-                cap = sz;
-            }
-        }
-    }
+    constexpr void shrink_to_fit() { elems.shrink_to_fit(); }
 
     constexpr void clear() noexcept {
-        for (T* i = elems; i < elems + sz; ++i) std::allocator_traits<Allocator>::destroy(alloc, i);
+        elems.clear();
         sz = 0;
     }
 
-    constexpr iterator insert(const_iterator pos, const T& value) {
-        std::size_t index = pos - elems;
-        if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
-        if (index < sz) {
-            std::allocator_traits<Allocator>::construct(alloc, elems + sz, std::move(elems[sz - 1]));
-            for (T* i = elems + sz - 1; i > elems + index; --i) *i = std::move(*(i - 1));
-            elems[index] = value;
-        } else std::allocator_traits<Allocator>::construct(alloc, elems + index, value);
+    constexpr iterator insert(const_iterator pos, const bool& value) {
+        std::size_t index = pos - cbegin();
+        if (sz % bits_per_word == 0) elems.push_back(_word_type(0));
+        if (index == sz) {
+            if (value) elems[word_index(sz)] |= bit_mask(sz);
+            ++sz;
+            return iterator(elems.data(), index);
+        }
         ++sz;
-        return elems + index;
+        _word_type w = word_index(index);
+        _word_type b = bit_index(index);
+        for (auto i = elems.end() - 1; i > elems.begin() + w; --i) {
+            *i <<= 1;
+            *i |= *(i - 1) >> (bits_per_word - 1) & _word_type(1);
+        }
+        _word_type lower_mask = (b == 0) ? _word_type(0) : (_word_type((_word_type(1) << b) - 1));
+        _word_type lower = elems[w] & lower_mask;
+        _word_type upper = elems[w] & ~lower_mask;
+        upper <<= 1;
+        upper &= ~lower_mask;
+        elems[w] = upper | lower;
+        if (value) elems[w] |= (_word_type(1) << b);
+        else elems[w] &= ~(_word_type(1) << b);
+        return iterator(elems.data(), index);
     }
 
-    constexpr iterator insert(const_iterator pos, T&& value) {
-        std::size_t index = pos - elems;
-        if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
-        if (index < sz) {
-            std::allocator_traits<Allocator>::construct(alloc, elems + sz, std::move(elems[sz - 1]));
-            for (T* i = elems + sz - 1; i > elems + index; --i) *i = std::move(*(i - 1));
-            elems[index] = std::move(value);
-        } else std::allocator_traits<Allocator>::construct(alloc, elems + index, std::move(value));
+    constexpr iterator insert(const_iterator pos, bool&& value) {
+        std::size_t index = pos - cbegin();
+        if (sz % bits_per_word == 0) elems.push_back(_word_type(0));
+        if (index == sz) {
+            if (value) elems[word_index(sz)] |= bit_mask(sz);
+            ++sz;
+            return iterator(elems.data(), index);
+        }
         ++sz;
-        return elems + index;
+        _word_type w = word_index(index);
+        _word_type b = bit_index(index);
+        for (auto i = elems.end() - 1; i > elems.begin() + w; --i) {
+            *i <<= 1;
+            *i |= *(i - 1) >> (bits_per_word - 1) & _word_type(1);
+        }
+        if (b != 0) {
+            _word_type lower_mask = _word_type((_word_type(1) << b) - 1);
+            _word_type lower = elems[w] & lower_mask;
+            _word_type upper = elems[w] & ~lower_mask;
+            upper <<= 1;
+            elems[w] = lower | (upper & ~lower_mask);
+        }
+        if (value) elems[w] |= (_word_type(1) << b);
+        else elems[w] &= ~(_word_type(1) << b);
+        return iterator(elems.data(), index);
     }
 
-    constexpr iterator insert(const_iterator pos, std::size_t count, const T& value) {
-        if (count == 0) return const_cast<iterator>(pos);
-        std::size_t index = pos - elems;
-        if (sz + count > cap) reserve(std::max(sz ? sz * VECTOR_GROW : 1, sz + count));
-        for (T* i = elems + sz + count - 1; i >= elems + index + count; --i) {
-            if (i >= elems + sz) std::allocator_traits<Allocator>::construct(alloc, i, std::move(*(i - count)));
-            else *i = std::move(*(i - count));
-        }
-        for (T* i = elems + index; i < elems + index + count; ++i) {
-            if (i < elems + sz) *i = value;
-            else std::allocator_traits<Allocator>::construct(alloc, i, value);
-        }
-        sz += count;
-        return elems + index;
+    constexpr iterator insert(const_iterator pos, size_type count, const bool& value) {
     }
 
     template<std::input_iterator InputIt>
     constexpr iterator insert(const_iterator pos, InputIt first, InputIt last) {
-        if (first == last) return const_cast<iterator>(pos);
-        if constexpr (std::random_access_iterator<InputIt>) {
-            std::size_t count = static_cast<std::size_t>(std::distance(first, last));
-            if (sz + count > cap) reserve(std::max(sz ? sz * VECTOR_GROW : 1, sz + count));
-            for (T* i = elems; i < elems + count; ++i, ++first) {
-                if (i < elems + sz) *i = *first;
-                else std::allocator_traits<Allocator>::construct(alloc, i, *first);
-            }
-            return const_cast<iterator>(pos);
-        } else {
-            Vector<T, Allocator> tmp(first, last, alloc);
-            return insert(pos, tmp.begin(), tmp.end());
-        }
     }
 
-    constexpr iterator insert(const_iterator pos, std::initializer_list<T> ilist) { return insert(pos, ilist.begin(), ilist.end()); }
+    constexpr iterator insert(const_iterator pos, std::initializer_list<bool> ilist) { return insert(pos, ilist.begin(), ilist.end()); }
 
     template<class... Args>
     constexpr iterator emplace(const_iterator pos, Args&&... args) {
-        std::size_t index = pos - elems;
-        if (index < sz) {
-            if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
-            std::allocator_traits<Allocator>::construct(alloc, elems + sz, std::move(elems[sz - 1]));
-            std::allocator_traits<Allocator>::destroy(alloc, elems + sz - 1);
-            for (T* i = elems + sz - 1; i > elems + index; --i) *i = std::move(*(i - 1));
-            std::allocator_traits<Allocator>::construct(alloc, elems + index, std::forward<Args>(args)...);
-        } else std::allocator_traits<Allocator>::construct(alloc, elems + index, std::forward<Args>(args)...);
-        ++sz;
-        return elems + index;
     }
 
     constexpr iterator erase(const_iterator pos) {
-        std::size_t index = pos - elems;
-        if (index >= sz) return end();
-        for (T* i = elems + index; i < elems + sz - 1; ++i) *i = std::move(*(i+1));
-        std::allocator_traits<Allocator>::destroy(alloc, elems + sz - 1);
-        --sz;
-        return elems + index;
     }
 
     constexpr iterator erase(const_iterator first, const_iterator last) {
-        if (first == last) return const_cast<iterator>(first);
-        std::size_t index = first - elems;
-        std::size_t end_index = last - elems;
-        if (index >= sz) return elems + sz;
-        if (end_index > sz) end_index = sz;
-        std::size_t count = end_index - index;
-        for (T* i = elems + index; i + count < elems + sz; ++i) *i = std::move(*(i + count));
-        for (T* i = elems + sz - count; i < elems + sz; ++i) std::allocator_traits<Allocator>::destroy(alloc, i);
-        sz -= count;
-        return elems + index;
     }
 
 
-    constexpr void push_back(const T& value) {
-        if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
-        std::allocator_traits<Allocator>::construct(alloc, elems + sz, value);
-        ++sz;
+    constexpr void push_back(const bool& value) {
     }
 
-    constexpr void push_back(T&& value) {
-        if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
-        std::allocator_traits<Allocator>::construct(alloc, elems + sz, std::move(value));
-        ++sz;
+    constexpr void push_back(bool&& value) {
     }
 
     template<class... Args>
     constexpr T& emplace_back(Args&&... args) {
-        if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
-        std::allocator_traits<Allocator>::construct(alloc, elems + sz, std::forward<Args>(args)...);
-        return elems[sz++];
     }
 
     constexpr void pop_back() {
-        if (sz > 0) {
-            --sz;
-            std::allocator_traits<Allocator>::destroy(alloc, elems + sz);
-        }
     }
 
     constexpr void resize(std::size_t new_size) {
-        if (new_size > cap) reserve(new_size);
-        if (new_size < sz) for (T* i = elems + new_size; i < elems + sz; ++i) std::allocator_traits<Allocator>::destroy(alloc, i);
-        else if (new_size > sz) for (T* i = elems + sz; i < elems + new_size; ++i) std::allocator_traits<Allocator>::construct(alloc, i, T());
-        sz = new_size;
     }
 
     constexpr void resize(std::size_t new_size, const T& value) {
-        if (new_size > cap) reserve(new_size);
-        if (new_size < sz) for (T* i = elems + new_size; i < elems + sz; ++i) std::allocator_traits<Allocator>::destroy(alloc, i);
-        else if (new_size > sz) for (T* i = elems + sz; i < elems + new_size; ++i) std::allocator_traits<Allocator>::construct(alloc, i, value);
-        sz = new_size;
     }
 
-    constexpr void swap(Vector& other) noexcept(std::allocator_traits<Allocator>::propagate_on_container_swap::value || std::allocator_traits<Allocator>::is_always_equal::value) {
-        if constexpr (std::allocator_traits<Allocator>::propagate_on_container_swap::value) std::swap(alloc, other.alloc);
-        std::swap(elems, other.elems);
+    constexpr void swap(Vector<bool, Allocator>& other) noexcept(std::allocator_traits<Allocator>::propagate_on_container_swap::value || std::allocator_traits<Allocator>::is_always_equal::value) {
+        elems.swap(other.elems);
         std::swap(sz, other.sz);
-        std::swap(cap, other.cap);
     }
 
     constexpr void filp() {};
