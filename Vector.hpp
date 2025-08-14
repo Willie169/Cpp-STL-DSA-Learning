@@ -509,6 +509,7 @@ namespace pmr {
 
 
 template<class Allocator = std::allocator<unsigned char>>
+requires std::is_integral_v<typename Allocator::value_type> && std::is_unsigned_v<typename Allocator::value_type>
 class Vector<bool, Allocator> {
 public:
     using _word_type = typename Allocator::value_type;
