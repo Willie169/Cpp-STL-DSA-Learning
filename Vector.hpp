@@ -5,7 +5,6 @@
 #endif
 
 #include <algorithm>
-#include <bit>
 #include <climits>
 #include <compare>
 #include <cstddef>
@@ -787,6 +786,7 @@ public:
 
     constexpr iterator insert(const_iterator pos, const bool& value) {
         size_type index = static_cast<size_type>(pos - cbegin());
+        if (index > sz) index = sz;
         if (sz % WORD_BIT == 0) elems.push_back(_word_type(0));
         if (index == sz) {
             if (value) elems[word_index(sz)] |= bit_mask(sz);
@@ -814,8 +814,9 @@ public:
     constexpr iterator insert(const_iterator pos, bool&& value) { return insert(pos, value); }
 
     constexpr iterator insert(const_iterator pos, size_type count, const bool& value) {
-        if (count == 0) return iterator(elems.data(), pos - cbegin());
         size_type index  = static_cast<size_type>(pos - cbegin());
+        if (index > sz) index = sz;
+        if (count == 0) return iterator(elems.data(), index);
         size_type new_sz = sz + count;
         size_type need_words = (new_sz + WORD_BIT - 1) / WORD_BIT;
         if (elems.size() < need_words) elems.resize(need_words, _word_type(0));
@@ -839,12 +840,9 @@ public:
         size_type sw = word_index(index);
         size_type sb = bit_index(index);
         size_type word_shift = count / WORD_BIT;
-        size_type bit_shift  = count % WORD_BIT;
+        size_type bit_shift = count % WORD_BIT;
         if (bit_shift == 0) {
-            if ((sz % WORD_BIT) != 0) {
-                elems[word_index(sz - 1)] &= (_word_type(1) << static_cast<size_type>(sz % WORD_BIT)) - 1;
-            }
-            std::memmove(static_cast<void*>(&elems[sw + word_shift]), static_cast<const void*>(&elems[sw]), ((sz + WORD_BIT - 1) / WORD_BIT - sw) * sizeof(_word_type));
+            if (word_shift) std::memmove(static_cast<void*>(&elems[sw + word_shift]), static_cast<const void*>(&elems[sw]), ((sz + WORD_BIT - 1) / WORD_BIT - sw) * sizeof(_word_type));
         } else {
             for (auto i = elems.end() - 1; i >= elems.begin() + word_index(index + count); --i) {
                 *i = (*(i - word_shift) << bit_shift) | (*(i - word_shift - 1) >> (WORD_BIT - bit_shift));
@@ -869,6 +867,8 @@ public:
 
     template<std::input_iterator InputIt>
     constexpr iterator insert(const_iterator pos, InputIt first, InputIt last) {
+        size_type index  = static_cast<size_type>(pos - cbegin());
+        if (index > sz) index = sz;
         if constexpr (std::forward_iterator<InputIt>) {
             std::size_t count = static_cast<std::size_t>(std::distance(first, last));
             if (count == 0) return iterator(elems.data(), index);
@@ -890,18 +890,77 @@ public:
     }
 
     constexpr iterator insert(const_iterator pos, std::initializer_list<bool> ilist) { return insert(pos, ilist.begin(), ilist.end()); }
-//TODO
+
     template<class... Args>
     constexpr iterator emplace(const_iterator pos, Args&&... args) {
+        return insert(pos, bool(std::forward<Args>(args)...));
     }
 
     constexpr iterator erase(const_iterator pos) {
+        size_type index = static_cast<size_type>(pos - cbegin());
+        if (index >= sz) return end();
+        --sz;
+        if (index == sz) {
+            elems[word_index(sz)] &= ~bit_mask(sz);
+            return iterator(elems.data(), index);
+        }
+        std::size_t w = word_index(index);
+        std::size_t b = bit_index(index);
+        for (auto i = elems.begin() + w + 1; i < elems.end() - 1; ++i) {
+            *i >>= 1;
+            *i |= (*(i + 1) & _word_type(1)) >> (WORD_BIT - 1);
+        }
+        *(elems.end() - 1) >>= 1;
+        if (b != 0) {
+            _word_type mask = (_word_type(1) << b) - 1;
+            _word_type lower = elems[w] & mask;
+            elems[w] &= ~mask;
+            elems[w] >>= 1;
+            elems[w] |= lower;
+        } else elems[w] >>= 1;
+        return iterator(elems.data(), index);
     }
 
     constexpr iterator erase(const_iterator first, const_iterator last) {
+        size_type index  = static_cast<size_type>(first - cbegin());
+        if (index >= sz) return end();
+        if (last > end()) last = end();
+        std::size_t count = static_cast<std::size_t>(std::distance(first, last));
+        if (count == 0) return iterator(elems.data(), index);
+        size_type new_sz = sz - count;
+        size_type w = word_index(index);
+        size_type b = bit_index(index);
+        if (index == new_sz) {
+            for (auto i = elems.begin() + w + 1; i < elems.end(); ++i) *i = _word_type(0);
+            elems[w] &= ~((_word_type(1) << b) - 1);
+            sz = new_sz;
+            return iterator(elems.data(), index);
+        }
+        size_type word_shift = count / WORD_BIT;
+        size_type bit_shift  = count % WORD_BIT;
+        if (bit_shift == 0) {
+            if (b != 0) {
+                _word_type mask = (_word_type(1) << b) - 1;
+                elems[w] = (elems[w] & mask) | (elems[w + word_shift] & ~mask);
+                if (w + word_shift + 1 < elems.size() && word_shift) std::memmove(static_cast<void*>(&elems[w + 1]), static_cast<const void*>(&elems[w + word_shift + 1]), (elems.size() - w - word_shift - 1) * sizeof(_word_type));
+            } else {
+                if (word_shift) std::memmove(static_cast<void*>(&elems[w]), static_cast<const void*>(&elems[w + word_shift]), (elems.size() - w - word_shift) * sizeof(_word_type));
+            }
+        } else {
+            if (b + bit_shift < WORD_BIT) right_mask = ~((_word_type(1) << (b + bit_shift)) - 1);
+            else right_mask = _word_type(0);
+            elems[w] = (elems[w] & ((_word_type(1) << b) - 1)) | ((elems[w + word_shift] & right_mask) << bit_shift);
+            for (auto i = elems.begin() + w + 1; i < elems.begin() + word_index(new_sz); ++i) {
+                *i = (*(i + word_shift) << bit_shift) | (*(i + word_shift - 1) >> (WORD_BIT - bit_shift));
+            }
+        }
+        size_type last_bits = bit_index(new_sz);
+        if (last_bits != 0) elems[word_index(new_sz)] &= (_word_type(1) << last_bits) - 1;
+        for (auto i = elems.begin() + word_index(new_sz) + 1; i < elems.end(); ++i) *i = _word_type(0);
+        sz = new_sz;
+        return iterator(elems.data(), index);
     }
-
-
+//TODO
     constexpr void push_back(const bool& value) {
     }
 
