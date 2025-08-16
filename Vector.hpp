@@ -386,6 +386,7 @@ public:
 
     template<class... Args>
     constexpr iterator emplace(const_iterator pos, Args&&... args) {
+        static_assert(sizeof...(Args) == 1, "Vector");
         size_type index = pos - elems;
         if (index < sz) {
             if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
@@ -435,6 +436,7 @@ public:
 
     template<class... Args>
     constexpr T& emplace_back(Args&&... args) {
+        static_assert(sizeof...(Args) == 1, "Vector");
         if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
         std::allocator_traits<Allocator>::construct(alloc, elems + sz, std::forward<Args>(args)...);
         return elems[sz++];
@@ -905,6 +907,7 @@ public:
 
     template<class... Args>
     constexpr iterator emplace(const_iterator pos, Args&&... args) {
+        static_assert(sizeof...(Args) == 1, "Vector");
         return insert(pos, bool(std::forward<Args>(args)...));
     }
 
@@ -986,6 +989,7 @@ public:
 
     template<class... Args>
     constexpr reference emplace_back(Args&&... args) {
+        static_assert(sizeof...(Args) == 1, "Vector");
         bool value = static_cast<bool>(std::forward<Args>(args)...);
         push_back(value);
         return back();
