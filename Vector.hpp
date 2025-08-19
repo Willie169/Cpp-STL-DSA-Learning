@@ -927,7 +927,7 @@ public:
         std::size_t b = bit_index(index);
         for (auto i = elems.begin() + w + 1; i < elems.end() - 1; ++i) {
             *i >>= 1;
-            *i |= (*(i + 1) & word_type(1)) >> (word_bit - 1);
+            *i |= (*(i + 1) & word_type(1)) << (word_bit - 1);
         }
         *(elems.end() - 1) >>= 1;
         if (b != 0) {
@@ -937,6 +937,10 @@ public:
             elems[w] >>= 1;
             elems[w] |= lower;
         } else elems[w] >>= 1;
+        size_type last_bits = bit_index(sz);
+        if (last_bits) elems[word_index(sz)] &= (word_type(1) << last_bits) - 1;
+        size_type last_word = word_index(sz - 1);
+        if (elems.size() > last_word + 1) elems.resize(last_word + 1);
         return iterator(elems.data(), index);
     }
 
@@ -976,8 +980,9 @@ public:
         }
         size_type last_bits = bit_index(new_sz);
         if (last_bits) elems[word_index(new_sz)] &= (word_type(1) << last_bits) - 1;
-        for (auto i = elems.begin() + word_index(new_sz) + 1; i < elems.end(); ++i) *i = word_type(0);
         sz = new_sz;
+        size_type last_word = word_index(sz - 1);
+        if (elems.size() > last_word + 1) elems.resize(last_word + 1);
         return iterator(elems.data(), index);
     }
 
