@@ -811,7 +811,7 @@ public:
             *i <<= 1;
             *i |= *(i - 1) >> (word_bit - 1);
         }
-        if (b != 0) {
+        if (b) {
             word_type mask = (word_type(1) << b) - 1;
             word_type lower = elems[w] & mask;
             elems[w] &= ~mask;
@@ -844,7 +844,7 @@ public:
                 } else {
                     elems[sw] |= ~((word_type(1) << sb) - 1);
                     for (size_type w = sw + 1; w < ew; ++w) elems[w] = ~word_type(0);
-                    if (eb != 0) elems[ew] |= (word_type(1) << eb) - 1;
+                    if (eb) elems[ew] |= (word_type(1) << eb) - 1;
                 }
             } else elems[sw] &= (sb == 0) ? word_type(0) : ((word_type(1) << sb) - 1);
             sz = new_sz;
@@ -871,13 +871,13 @@ public:
             } else {
                 elems[sw] |= ~((word_type(1) << sb) - 1);
                 for (size_type w = sw + 1; w < ew; ++w) elems[w] = ~word_type(0);
-                if (eb != 0) elems[ew] |= (word_type(1) << eb) - 1;
+                if (eb) elems[ew] |= (word_type(1) << eb) - 1;
             }
         } else {
             elems[sw] &= (sb == 0) ? word_type(0) : ((word_type(1) << sb) - 1);
             if (sw != ew) {
                for (size_type w = sw + 1; w < ew; ++w) elems[w] = word_type(0);
-               if (eb != 0) elems[ew] &= ~((word_type(1) << eb) - 1);
+               if (eb) elems[ew] &= ~((word_type(1) << eb) - 1);
             }
         }
         sz = new_sz;
@@ -930,10 +930,9 @@ public:
             *i |= (*(i + 1) & word_type(1)) << (word_bit - 1);
         }
         *(elems.end() - 1) >>= 1;
-        if (b != 0) {
-            word_type mask = (word_type(1) << b) - 1;
-            word_type lower = elems[w] & mask;
-            elems[w] &= ~mask;
+        if (b) {
+            word_type lower = elems[w] & ((word_type(1) << b) - 1);
+            elems[w] &= ~((word_type(1) << (b + 1)) - 1);
             elems[w] >>= 1;
             elems[w] |= lower;
         } else elems[w] >>= 1;
@@ -962,9 +961,8 @@ public:
         size_type word_shift = count / word_bit;
         size_type bit_shift  = count % word_bit;
         if (bit_shift == 0) {
-            if (b != 0) {
-                word_type mask = (word_type(1) << b) - 1;
-                elems[w] = (elems[w] & mask) | (elems[w + word_shift] & ~mask);
+            if (b) {
+                elems[w] = (elems[w] & ((word_type(1) << b) - 1)) | (elems[w + word_shift] & ~((word_type(1) << (b + 1)) - 1));
                 if (w + word_shift + 1 < elems.size() && word_shift) std::memmove(static_cast<void*>(&elems[w + 1]), static_cast<const void*>(&elems[w + word_shift + 1]), (elems.size() - w - word_shift - 1) * sizeof(word_type));
             } else {
                 if (word_shift) std::memmove(static_cast<void*>(&elems[w]), static_cast<const void*>(&elems[w + word_shift]), (elems.size() - w - word_shift) * sizeof(word_type));
