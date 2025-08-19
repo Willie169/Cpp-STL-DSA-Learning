@@ -672,8 +672,8 @@ public:
     constexpr Vector(size_type count, const bool& value, const Allocator& alloc_ = Allocator()) : elems((count + word_bit - 1) / word_bit, alloc_), sz(count) {
         if (value) {
             std::fill(elems.begin(), elems.end(), ~word_type(0));
-            size_type excess = elems.size() * word_bit - sz;
-            if (excess > 0) elems.back() &= (word_type(~word_type(0)) >> excess);
+            size_type last_bits = bit_index(sz);
+            if (last_bits) elems.back() &= (word_type(1) << last_bits) - 1;
         }
     }
 
@@ -715,8 +715,8 @@ public:
     constexpr void assign(std::size_t count, const bool& value) {
         if (value) {
             elems.assign((count + word_bit - 1) / word_bit, ~word_type(0));
-            size_type excess = elems.size() * word_bit - count;
-            if (excess > 0) elems.back() &= (word_type(~word_type(0)) >> excess);
+            size_type last_bits = bit_index(count);
+            if (last_bits) elems.back() &= (word_type(1) << last_bits) - 1;
         } else elems.assign((count + word_bit - 1) / word_bit, word_type(0));
         sz = count;
     }
@@ -726,16 +726,12 @@ public:
         if constexpr (std::forward_iterator<InputIt>) {
             std::size_t count = static_cast<std::size_t>(std::distance(first, last));
             assign(count, false);
-            for (std::size_t pos; first != last; ++first, ++pos) {
+            for (std::size_t pos = 0; first != last; ++first, ++pos) {
                 if (static_cast<bool>(*first)) elems[word_index(pos)] |= bit_mask(pos);
             }
             sz = count;
         } else {
-            for (; first != last; ++first) {
-                if (sz % word_bit == 0) elems.push_back(word_type(0));
-                if (static_cast<bool>(*first)) elems[word_index(sz)] |= bit_mask(sz);
-                ++sz;
-            }
+            for (; first != last; ++first) push_back(*first);
         }
     }
 
@@ -979,7 +975,7 @@ public:
             }
         }
         size_type last_bits = bit_index(new_sz);
-        if (last_bits != 0) elems[word_index(new_sz)] &= (word_type(1) << last_bits) - 1;
+        if (last_bits) elems[word_index(new_sz)] &= (word_type(1) << last_bits) - 1;
         for (auto i = elems.begin() + word_index(new_sz) + 1; i < elems.end(); ++i) *i = word_type(0);
         sz = new_sz;
         return iterator(elems.data(), index);
@@ -1010,13 +1006,28 @@ public:
     }
 
     constexpr void resize(std::size_t new_size) {
+        size_type last_bits = bit_index(sz);
         elems.resize((new_size + word_bit - 1) / word_bit);
+        if (last_bits && new_size) elems[word_index(sz)] &= (word_type(1) << last_bits) - 1;
         sz = new_size;
     }
 
     constexpr void resize(std::size_t new_size, const bool& value) {
-        if (value) elems.resize((new_size + word_bit - 1) / word_bit, word_type(1));
-        else elems.resize((new_size + word_bit - 1) / word_bit);
+        if (value) {
+            elems.resize((new_size + word_bit - 1) / word_bit, ~word_type(0));
+            if (new_size) {
+                size_type last_bits = bit_index(sz);
+                if (last_bits) elems[word_index(sz)] |= ~((word_type(1) << last_bits) - 1);
+                last_bits = bit_index(new_size);
+                if (last_bits) elems.back() &= (word_type(1) << last_bits) - 1;
+            }
+        } else {
+            elems.resize((new_size + word_bit - 1) / word_bit);
+            if (new_size) {
+                size_type last_bits = bit_index(sz);
+                if (last_bits) elems[word_index(sz)] &= (word_type(1) << last_bits) - 1;
+            }
+        }
         sz = new_size;
     }
 
@@ -1029,10 +1040,7 @@ public:
         if (sz == 0) return;
         for (auto& word : elems) word = ~word;
         size_type last_bits = bit_index(sz);
-        if (last_bits != 0) {
-            word_type mask = (word_type(1) << last_bits) - 1;
-            elems[word_index(sz)] &= mask;
-        }
+        if (last_bits) elems[word_index(sz)] &= (word_type(1) << last_bits) - 1;
     }
 
     static constexpr void swap(reference x, reference y) {
