@@ -243,22 +243,47 @@ static void test_emplace_and_emplace_at() {
 template<class VB>
 static void test_erase_single_and_range() {
     VB v;
-    for (int i = 0; i < 70; ++i) v.push_back(i%3==0);
-    // erase single near word boundary
+    for (int i = 0; i < 70; ++i) v.push_back(i % 3 == 0);
     const size_t WB = VB::word_bit;
-    if (v.size() > WB) {
-        bool next = static_cast<bool>(v[WB]); // value that will slide into boundary
-        v.erase(v.begin() + (WB-1));
-        CHECK(static_cast<bool>(v[WB-1]) == next);
+    // Erase single
+    for (size_t offset = 0; offset < WB; ++offset) {
+        if (v.size() > WB + offset) {
+            bool next = static_cast<bool>(v[WB + offset]);
+            v.erase(v.begin() + (WB - 1 + offset));
+            CHECK(static_cast<bool>(v[WB - 1 + offset]) == next);
+        }
     }
-    // erase a middle range crossing boundaries
-    size_t old = v.size();
-    auto it = v.erase(v.begin()+5, v.begin()+33);
-    CHECK(v.size() == old - (33-5));
+    // Erase range
+    size_t old_size = v.size();
+    auto it = v.erase(v.begin() + 5, v.begin() + 33);
+    CHECK(v.size() == old_size - (33 - 5));
     CHECK((it - v.begin()) == 5);
-    // erase to end
-    v.erase(v.begin()+10, v.end());
+    // Erase to end
+    v.erase(v.begin() + 10, v.end());
     CHECK(v.size() == 10);
+    // Erase ranges of various sizes and alignment
+    std::vector<std::pair<size_t, size_t>> ranges = {
+        {3, 10}, {2, 9}, {0, 8}, {0, 9}, {1, 7}, {3, 5}, {6, 15}, {11, 12}
+    };
+    for (auto i : v) cout << i; //
+    cout << "\n"; //
+    for (auto [start, end] : ranges) {
+        cout << start << ", " << end << "\n"; //
+        auto t = v;
+        std::vector<bool> u(v.begin(), v.end());
+        auto it = t.erase(t.begin() + start, t.begin() + end);
+        u.erase(u.begin() + start, u.begin() + end);
+        cout << "t.size(): " << t.size() << ", u.size(): " << u.size() << "\nt: "; //
+        for (size_t i = 0; i < t.size(); ++i) cout << t[i]; //
+        cout << "\nu: "; //
+        for (size_t i = 0; i < u.size(); ++i) cout << u[i]; //
+        cout << "\n"; //
+        // CHECK(t.size() == u.size());
+        // for (size_t i = 0; i < t.size(); ++i) {
+            // CHECK(static_cast<bool>(t[i]) == static_cast<bool>(u[i]));
+        // }
+    }
+    std::terminate();
 }
 
 template<class VB>
@@ -325,7 +350,7 @@ template<class VB>
 static void test_at_randomized_equivalence() {
     VB v;
     std::vector<bool> s;
-    std::mt19937 rng(42);
+    std::mt19937 rng(40);
     for (int t = 0; t < 2000; ++t) {
         int op = rng() % 8;
         std::string op_name;
