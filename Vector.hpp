@@ -917,35 +917,37 @@ public:
 
     constexpr iterator erase(const_iterator pos) {
         size_type index = static_cast<size_type>(pos - cbegin());
-        if (index >= sz) return end();
+        if (index >= sz || sz == 0) return end();
         --sz;
         if (index == sz) {
-            elems[word_index(sz)] &= ~bit_mask(sz);
+            size_type last_bits = bit_index(sz);
+            if (last_bits) elems[word_index(sz)] &= (word_type(1) << last_bits) - 1;
+            else elems.pop_back();
             return iterator(elems.data(), index);
         }
         std::size_t w = word_index(index);
         std::size_t b = bit_index(index);
-        for (auto i = elems.begin() + w + 1; i < elems.end() - 1; ++i) {
-            *i >>= 1;
-            *i |= (*(i + 1) & word_type(1)) << (word_bit - 1);
-        }
-        *(elems.end() - 1) >>= 1;
         if (b) {
             word_type lower = elems[w] & ((word_type(1) << b) - 1);
             elems[w] &= ~((word_type(1) << (b + 1)) - 1);
             elems[w] >>= 1;
             elems[w] |= lower;
         } else elems[w] >>= 1;
+        elems[w] |= (elems[w + 1] & word_type(1)) << (word_bit - 1);
+        for (auto i = elems.begin() + w + 1; i < elems.end() - 1; ++i) {
+            *i >>= 1;
+            *i |= (*(i + 1) & word_type(1)) << (word_bit - 1);
+        }
+        *(elems.end() - 1) >>= 1;
         size_type last_bits = bit_index(sz);
         if (last_bits) elems[word_index(sz)] &= (word_type(1) << last_bits) - 1;
-        size_type last_word = word_index(sz - 1);
-        if (elems.size() > last_word + 1) elems.resize(last_word + 1);
+        else elems.pop_back();
         return iterator(elems.data(), index);
     }
 
     constexpr iterator erase(const_iterator first, const_iterator last) {
         size_type index  = static_cast<size_type>(first - cbegin());
-        if (index >= sz) return end();
+        if (index >= sz || sz == 0) return end();
         if (last > end()) last = end();
         std::size_t count = static_cast<std::size_t>(std::distance(first, last));
         if (count == 0) return iterator(elems.data(), index);
@@ -956,6 +958,8 @@ public:
             for (auto i = elems.begin() + w + 1; i < elems.end(); ++i) *i = word_type(0);
             elems[w] &= ~((word_type(1) << b) - 1);
             sz = new_sz;
+            size_type last_word = word_index(sz - 1);
+            if (elems.size() > last_word + 1) elems.resize(last_word + 1);
             return iterator(elems.data(), index);
         }
         size_type word_shift = count / word_bit;
