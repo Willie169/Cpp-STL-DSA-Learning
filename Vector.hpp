@@ -422,25 +422,34 @@ public:
 
     constexpr iterator insert(const_iterator pos, std::initializer_list<T> ilist) { return insert(pos, ilist.begin(), ilist.end()); }
 
-    template<class Arg>
-    constexpr iterator emplace(const_iterator pos, Arg&& arg) {
-        size_type index = pos - elems;
-        if (index < sz) {
-            if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
-            std::allocator_traits<Allocator>::construct(alloc, elems + sz, std::move(elems[sz - 1]));
-            if constexpr (!std::is_trivially_copyable_v<T>) std::allocator_traits<Allocator>::destroy(alloc, elems + sz - 1);
-            for (T* i = elems + sz - 1; i > elems + index; --i) *i = std::move(*(i - 1));
-            std::allocator_traits<Allocator>::construct(alloc, elems + index, std::forward<Arg>(arg));
-        } else std::allocator_traits<Allocator>::construct(alloc, elems + index, std::forward<Arg>(arg));
-        ++sz;
-        return elems + index;
-    }
+	template<class Arg>
+	constexpr iterator emplace(const_iterator pos, Arg&& arg) {
+	    size_type index = pos - elems;
+	    if (index > sz) resize(index);
+	    if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
+	    if (index == sz) {
+	        std::allocator_traits<Allocator>::construct(alloc, elems + sz, std::forward<Arg>(arg));
+	    } else {
+	        if constexpr (std::is_trivially_copyable_v<T>) {
+	            std::memmove(elems + index + 1, elems + index, (sz - index) * sizeof(T));
+	            std::allocator_traits<Allocator>::construct(alloc, elems + index, std::forward<Arg>(arg));
+	        } else {
+	            std::allocator_traits<Allocator>::construct(alloc, elems + sz, std::move(elems[sz - 1]));
+	            for (T* i = elems + sz - 1; i > elems + index; --i) *i = std::move(*(i - 1));
+	            elems[index] = T(std::forward<Arg>(arg));
+	        }
+	    }
+	    ++sz;
+	    return elems + index;
+	}
 
     constexpr iterator erase(const_iterator pos) {
         size_type index = pos - elems;
-        if (index >= sz) return end();
-        for (T* i = elems + index; i < elems + sz - 1; ++i) *i = std::move(*(i+1));
-        if constexpr (!std::is_trivially_copyable_v<T>) std::allocator_traits<Allocator>::destroy(alloc, elems + sz - 1);
+        if constexpr (std::is_trivially_copyable_v<T>) std::memmove(elems + index, elems + index + 1, (sz - index - 1) * sizeof(T));
+        else {
+            for (T* i = elems + index; i < elems + sz - 1; ++i) *i = std::move(*(i+1));
+            std::allocator_traits<Allocator>::destroy(alloc, elems + sz - 1);
+        }
         --sz;
         return elems + index;
     }
