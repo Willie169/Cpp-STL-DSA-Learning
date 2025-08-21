@@ -1018,7 +1018,7 @@ public:
         size_type bit_left  = count % word_bit;
         if (bit_left == b) {
             if (b != 0) {
-                elems[w] = (elems[w] & ((word_type(1) << b) - 1)) | (elems[w + word_diff] & ~((word_type(1) << (b + 1)) - 1));
+                elems[w] = (elems[w] & ((word_type(1) << b) - 1)) | (elems[w + word_diff] & ~((word_type(1) << b) - 1));
                 if (w + word_diff + 1 < elems.size()) std::memmove(static_cast<void*>(&elems[w + 1]), static_cast<const void*>(&elems[w + word_diff + 1]), (elems.size() - w - word_diff - 1) * sizeof(word_type));
             } else std::memmove(static_cast<void*>(&elems[w]), static_cast<const void*>(&elems[w + word_diff]), (elems.size() - w - word_diff) * sizeof(word_type));
         } else if (bit_left < b) {
@@ -1029,7 +1029,7 @@ public:
             }
         } else {
             size_type bit_diff = bit_left - b;
-            elems[w] = (elems[w] & ((word_type(1) << b) - 1)) | ((elems[w + word_diff] & ~((word_type(1) << bit_left) - 1)) >> bit_diff);
+            elems[w] = (elems[w] & (((b == 0) ? word_type(0) : (word_type(1) << b)) - 1)) | ((elems[w + word_diff] & ~((word_type(1) << bit_left) - 1)) >> bit_diff);
             if (w + word_diff + 1 < elems.size()) elems[w] |= elems[w + word_diff + 1] << (word_bit - bit_diff);
             for (auto i = elems.begin() + w + 1; i < elems.begin() + last_word; ++i) {
                 *i = (*(i + word_diff) >> bit_diff) | (*(i + word_diff + 1) << (word_bit - bit_diff));
