@@ -262,28 +262,20 @@ static void test_erase_single_and_range() {
     v.erase(v.begin() + 10, v.end());
     CHECK(v.size() == 10);
     // Erase ranges of various sizes and alignment
+    v = {0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1 ,1, 0 ,1, 1, 1, 1, 1};
     std::vector<std::pair<size_t, size_t>> ranges = {
-        {3, 10}, {2, 9}, {0, 8}, {0, 9}, {1, 7}, {3, 5}, {6, 15}, {11, 12}
+        {3, 5}, {1, 7}, {3, 8}, {0, 8}, {0, 9}, {3, 12}, {3, 9}, {10, 23}, {21, 22}
     };
-    for (auto i : v) cout << i; //
-    cout << "\n"; //
     for (auto [start, end] : ranges) {
-        cout << start << ", " << end << "\n"; //
         auto t = v;
         std::vector<bool> u(v.begin(), v.end());
         auto it = t.erase(t.begin() + start, t.begin() + end);
         u.erase(u.begin() + start, u.begin() + end);
-        cout << "t.size(): " << t.size() << ", u.size(): " << u.size() << "\nt: "; //
-        for (size_t i = 0; i < t.size(); ++i) cout << t[i]; //
-        cout << "\nu: "; //
-        for (size_t i = 0; i < u.size(); ++i) cout << u[i]; //
-        cout << "\n"; //
-        // CHECK(t.size() == u.size());
-        // for (size_t i = 0; i < t.size(); ++i) {
-            // CHECK(static_cast<bool>(t[i]) == static_cast<bool>(u[i]));
-        // }
+        CHECK(t.size() == u.size());
+        for (size_t i = 0; i < t.size(); ++i) {
+            CHECK(static_cast<bool>(t[i]) == static_cast<bool>(u[i]));
+        }
     }
-    std::terminate();
 }
 
 template<class VB>
@@ -419,10 +411,12 @@ static void test_at_randomized_equivalence() {
                 std::cerr << "Value mismatch after operation " << op_name
                           << " at index " << i
                           << ": v[" << i << "] = " << static_cast<bool>(v[i])
-                          << ", s[" << i << "] = " << s[i] << "\n";
+                          << ", s[" << i << "] = " << s[i]
+                          << ", v.size() = " << v.size() << ", s.size() = " << s.size() << "\n";
                 std::terminate();
             }
         }
+        cout << op_name << endl;
     }
 }
 
