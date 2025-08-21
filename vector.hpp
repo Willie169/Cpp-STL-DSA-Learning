@@ -19,6 +19,7 @@
 #include <type_traits>
 #include <utility>
 
+
 namespace mystd {
 
 template<class T, class Allocator = std::allocator<T>>
@@ -43,6 +44,17 @@ private:
     T* elems;
     std::size_t sz;
     std::size_t cap;
+
+    constexpr destroy_deallocate() {
+        if (elems) {
+            if constexpr (!std::is_trivially_copyable_v<T>) {
+                for (T* i = elems; i < elems + sz; ++i) std::allocator_traits<Allocator>::destroy(alloc, i);
+            }
+            std::allocator_traits<Allocator>::deallocate(alloc, elems, cap);
+            elems = nullptr;
+            sz = cap = 0;
+        }
+    }
 
 public:
     constexpr vector() noexcept(noexcept(Allocator())) : alloc(Allocator()), elems(nullptr), sz(0), cap(0) {}
@@ -93,14 +105,22 @@ public:
             if constexpr (std::is_trivially_copyable_v<T>) {
                 std::memmove(elems, other.elems, sz * sizeof(T));
             } else {
-                for (T* i = elems, * j = other.elems; i < elems + sz; ++i, ++j)
-                    std::allocator_traits<Allocator>::construct(alloc, i, *j);
+                T* p = elems;
+                try {
+                    for (T* j = other.elems; j < other.elems + sz; ++j, ++p)
+                        std::allocator_traits<Allocator>::construct(alloc, p, *j);
+                } catch (...) {
+                    for (T* k = elems; k < p; ++k)
+                        std::allocator_traits<Allocator>::destroy(alloc, k);
+                    std::allocator_traits<Allocator>::deallocate(alloc, elems, cap);
+                    throw;
+                }
             }
         }
     }
 
     constexpr vector(vector&& other) noexcept : alloc(std::move(other.alloc)), elems(nullptr), sz(0), cap(0) {
-        if constexpr (std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value || alloc == other.alloc) {
+        if constexpr (std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value || std::allocator_traits<Allocator>::is_always_equal || (requires { { alloc == other.alloc } -> std::convertible_to<bool>; } && (alloc == other.alloc))) {
             elems = std::exchange(other.elems, nullptr);
             sz = std::exchange(other.sz, 0);
             cap = std::exchange(other.cap, 0);
@@ -108,7 +128,7 @@ public:
             if (other.sz > 0) {
                 elems = std::allocator_traits<Allocator>::allocate(alloc, other.sz);
                 sz = cap = other.sz;
-                if constexpr (std::is_trivially_move_constructible_v<T> || !std::is_copy_constructible_v<T>) {
+                if constexpr (std::is_trivially_move_constructible_v<T>) {
                     std::memmove(elems, other.elems, sz * sizeof(T));
                 } else {
                     for (T* i = elems, * j = other.elems; i < elems + sz; ++i, ++j)
@@ -131,25 +151,37 @@ public:
         }
     }
 
-    constexpr vector(vector&& other, const Allocator& alloc_) : alloc(alloc_), elems(nullptr), sz(0), cap(0) {
-        if (alloc == other.alloc) {
-            elems = std::exchange(other.elems, nullptr);
-            sz = std::exchange(other.sz, 0);
-            cap = std::exchange(other.cap, 0);
-        } else {
-            sz = other.sz;
-            cap = other.cap;
-            if (cap > 0) {
-                elems = std::allocator_traits<Allocator>::allocate(alloc, cap);
-                if constexpr (std::is_trivially_move_constructible_v<T> || !std::is_copy_constructible_v<T>) {
-                    std::memmove(elems, other.elems, sz * sizeof(T));
-                } else {
-                    for (T* i = elems, * j = other.elems; i < elems + sz; ++i, ++j)
-                        std::allocator_traits<Allocator>::construct(alloc, i, std::move(*j));
-                }
-            }
-        }
-    }
+	constexpr vector(vector&& other) noexcept(std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value || std::allocator_traits<Allocator>::is_always_equal::value) : alloc(std::move(other.alloc)), elems(nullptr), sz(0), cap(0) {
+	    if constexpr (std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value || std::allocator_traits<Allocator>::is_always_equal::value || (requires { { alloc == other.alloc } -> std::convertible_to<bool>; } && (alloc == other.alloc))) {
+	        elems = std::exchange(other.elems, nullptr);
+	        sz = std::exchange(other.sz, 0);
+	        cap = std::exchange(other.cap, 0);
+	    } else {
+	        if (other.sz > 0) {
+	            elems = std::allocator_traits<Allocator>::allocate(alloc, other.sz);
+	            sz = cap = other.sz;
+	            if constexpr (std::is_trivially_move_constructible_v<T>) {
+	                std::memmove(elems, other.elems, sz * sizeof(T));
+	            } else {
+	                T* p = elems;
+	                try {
+	                    for (T* j = other.elems; j < other.elems + sz; ++j, ++p)
+	                        std::allocator_traits<Allocator>::construct(alloc, p, std::move(*j));
+	                } catch (...) {
+	                    for (T* k = elems; k < p; ++k)
+	                        std::allocator_traits<Allocator>::destroy(alloc, k);
+	                    std::allocator_traits<Allocator>::deallocate(alloc, elems, cap);
+	                    elems = nullptr;
+	                    sz = cap = 0;                    
+	                    throw;
+	                }
+	                std::destroy(other.elems, other.elems + sz, other.alloc)
+	            }
+	            other.elems = nullptr;
+	            other.sz = other.cap = 0;
+	        }
+	    }
+	}
 
     vector(std::initializer_list<T> ilist, const Allocator& alloc_ = Allocator()) : alloc(alloc_), elems(nullptr), sz(ilist.size()), cap(ilist.size()) {
         if (cap > 0) {
@@ -176,8 +208,8 @@ public:
 
     constexpr vector& operator=(const vector& other) {
         if (this != &other) {
-            if constexpr (std::allocator_traits<Allocator>::propagate_on_container_copy_assignment::value && alloc != other.alloc) {
-                clear();
+            if constexpr (std::allocator_traits<Allocator>::propagate_on_container_copy_assignment::value && (requires { { alloc != other.alloc } -> std::convertible_to<bool>; } && (alloc != other.alloc))) {
+                destroy_deallocate();
                 alloc = other.alloc;
                 if (cap < other.sz) {
                     if (elems) std::allocator_traits<Allocator>::deallocate(alloc, elems, cap);
@@ -191,7 +223,6 @@ public:
             } else if constexpr (!std::is_trivially_copyable_v<T>) {
                 for (T* i = elems + other.sz; i < elems + sz; ++i) std::allocator_traits<Allocator>::destroy(alloc, i);
             }
-
             if constexpr (std::is_trivially_copyable_v<T>) {
                 std::memmove(elems, other.elems, other.sz * sizeof(T));
             } else if constexpr (std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>) {
@@ -210,7 +241,7 @@ public:
 
     constexpr vector& operator=(vector&& other) noexcept(std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value || std::allocator_traits<Allocator>::is_always_equal::value) {
         if (this != &other) {
-            if constexpr (alloc == other.alloc || std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value) {
+            if constexpr (!std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value || std::allocator_traits<Allocator>::is_always_equal || (requires { { alloc == other.alloc } -> std::convertible_to<bool>; } && (alloc == other.alloc))) {
                 clear();
                 alloc = std::move(other.alloc);
                 elems = std::exchange(other.elems, nullptr);
@@ -224,14 +255,12 @@ public:
                 } else if constexpr (!std::is_trivially_copyable_v<T>) {
                     for (T* i = elems + other.sz; i < elems + sz; ++i) std::allocator_traits<Allocator>::destroy(alloc, i);
                 }
-
                 if constexpr (std::is_trivially_copyable_v<T> || std::is_trivially_move_constructible_v<T>) {
                     std::memmove(elems, other.elems, other.sz * sizeof(T));
                 } else {
                     for (T* i = other.elems, * j = elems; i < other.elems + other.sz; ++i, ++j)
                         std::allocator_traits<Allocator>::construct(alloc, j, std::move(*i));
                 }
-
                 sz = other.sz;
                 other.clear();
             }
@@ -249,7 +278,6 @@ public:
         } else if constexpr (!std::is_trivially_copyable_v<T>) {
             for (T* i = elems + count; i < elems + sz; ++i) std::allocator_traits<Allocator>::destroy(alloc, i);
         }
-
         if constexpr (std::is_trivially_copyable_v<T>) {
             for (T* i = elems; i < elems + count; ++i) *i = value;
         } else {
@@ -272,7 +300,6 @@ public:
             } else if constexpr (!std::is_trivially_copyable_v<T>) {
                 for (T* i = elems + count; i < elems + sz; ++i) std::allocator_traits<Allocator>::destroy(alloc, i);
             }
-
             if constexpr (std::is_trivially_copyable_v<T> && std::contiguous_iterator<InputIt>) {
                 std::memmove(elems, &*first, count * sizeof(T));
             } else {
