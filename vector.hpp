@@ -638,16 +638,5 @@ constexpr typename mystd::vector<T, Allocator>::size_type erase_if(mystd::vector
     return count;
 }
 
-template <typename T, typename Allocator>
-struct hash<mystd::vector<T, Allocator>> {
-    constexpr std::size_t operator()(const mystd::vector<T, Allocator>& v) const noexcept {
-        std::size_t seed = 0;
-        for (std::size_t i = 0; i < v.size(); ++i) {
-            seed ^= std::hash<T>{}(v[i]) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-        }
-        return seed;
-    }
-};
-
 }
 
