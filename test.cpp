@@ -341,6 +341,7 @@ static void test_hash_basic_changes() {
 template<class VB>
 static void test_at_randomized_equivalence() {
     VB v;
+    const size_t WB = VB::word_bit;
     std::vector<bool> s;
     std::mt19937 rng(42);
     for (int t = 0; t < 10000; ++t) {
@@ -369,11 +370,11 @@ static void test_at_randomized_equivalence() {
             s[idx] = val;
         }
         else if (op == 3) { // insert single
-            op_name = "insert_single";
             idx = s.empty() ? 0 : (rng() % (s.size() + 1));
             val = rng() & 1;
             v.insert(v.begin() + idx, val);
             s.insert(s.begin() + idx, val);
+            op_name = "insert_single_" + to_string(idx) + "_" + to_string(val);
         }
         else if (op == 4 && !s.empty()) { // erase single
             op_name = "erase_single";
@@ -420,15 +421,11 @@ static void test_at_randomized_equivalence() {
         }
         for (size_t i = 0; i < s.size(); ++i) {
             if (static_cast<bool>(v[i]) != static_cast<bool>(s[i])) {
-                std::cerr << "Value mismatch after operation " << op_name
-                          << " at index " << i
-                          << ": v[" << i << "] = " << static_cast<bool>(v[i])
-                          << ", s[" << i << "] = " << s[i]
-                          << ", v.size() = " << v.size() << ", s.size() = " << s.size() << "\n";
+                std::cerr << "Value mismatch after operation " << op_name << " at index " << i << ": v[" << i << "] = " << static_cast<bool>(v[i]) << ", s[" << i << "] = " << s[i] << ", v.size() = " << v.size() << ", s.size() = " << s.size() << "\n";
                 std::terminate();
             }
         }
-        cout << op_name << endl;
+        for (size_t i = s.size(); i < (v.size() + WB - 1) / WB * WB; ++i) CHECK(v[i] == 0);
     }
 }
 

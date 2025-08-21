@@ -805,8 +805,8 @@ public:
     constexpr reference back() { return (*this)[sz - 1]; }
     constexpr bool back() const { return (*this)[sz - 1]; }
 
-    constexpr word_type* data() noexcept { return elems.data(); }
-    constexpr const word_type* data() const noexcept { return elems.data(); }
+    constexpr word_type* data() noexcept { return elems.data(); } // delete
+    constexpr const word_type* data() const noexcept { return elems.data(); } // delete
 
     constexpr iterator begin() noexcept { return iterator(elems.data(), 0); }
     constexpr const_iterator begin() const noexcept { return const_iterator(elems.data(), 0); }
@@ -850,13 +850,13 @@ public:
         ++sz;
         std::size_t w = word_index(index);
         std::size_t b = bit_index(index);
-        for (auto i = elems.end() - 1; i > elems.begin() + w; --i) {
+        for (auto i = elems.end() - 1; i > elems.begin() + w + 1; --i) {
             *i = (*i << 1) | (*(i - 1) >> (word_bit - 1));
         }
         if (b != 0) {
             word_type mask = (word_type(1) << b) - 1;
             elems[w] = (elems[w] & mask) | ((elems[w] & ~mask) << 1);
-        }
+        } else elems[w] << 1;
         if (value) elems[w] |= (word_type(1) << b);
         else elems[w] &= ~(word_type(1) << b);
         return iterator(elems.data(), index);
@@ -1110,7 +1110,7 @@ struct std::hash<Vector<bool, Allocator>> {
         const std::size_t word_bit = sizeof(word_type) * CHAR_BIT;
         std::size_t nwords = v.size() / word_bit;
         std::size_t leftover = v.size() % word_bit;
-        const word_type* raw = reinterpret_cast<const word_type*>(v.data());
+        const word_type* raw = v.data();
         for (std::size_t i = 0; i < nwords; ++i) {
             h ^= static_cast<std::size_t>(raw[i]);
             h *= prime;
