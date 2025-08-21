@@ -50,9 +50,9 @@ private:
             if constexpr (!std::is_trivially_copyable_v<T>)
                 std::destroy(elems, elems + sz);
             std::allocator_traits<Allocator>::deallocate(alloc, elems, cap);
-            elems = nullptr;
-            sz = cap = 0;
         }
+        elems = nullptr;
+        cap = 0;
     }
 
 public:
@@ -156,7 +156,10 @@ public:
         }
     }
 
-    constexpr ~vector() { destroy_deallocate(); }
+    constexpr ~vector() {
+        destroy_deallocate();
+        sz = 0;
+    }
 
     constexpr vector& operator=(const vector& other) {
         if (this != &other) {
@@ -188,24 +191,23 @@ public:
                 if constexpr (std::is_trivially_copyable_v<T> || std::is_trivially_move_constructible_v<T>) std::memmove(elems, other.elems, other.sz * sizeof(T));
                 else { T* p = elems; try { for (T* i = other.elems; i < other.elems + other.sz; ++i, ++p) std::allocator_traits<Allocator>::construct(alloc, p, std::move(*i)); } catch (...) { std::destroy(elems, p); throw; } }
                 sz = other.sz;
-                other.destroy_deallocate();
+                other.~vector();
             }
         }
         return *this;
     }
 
     constexpr vector& operator=(std::initializer_list<T> ilist) {
-        assign(ilist);
+        assign(ilist.begin(), ilist.end());
         return *this;
     }
 
     constexpr void assign(std::size_t count, const T& value) {
         if (count > cap) {
             destroy_deallocate();
+            sz = 0;
             elems = std::allocator_traits<Allocator>::allocate(alloc, count);
             cap = count;
-        } else if constexpr (!std::is_trivially_copyable_v<T>) {
-            std::destroy(elems + count, elems + sz);
         }
         if constexpr (std::is_trivially_copyable_v<T>) {
             for (T* i = elems; i < elems + count; ++i) *i = value;
@@ -214,6 +216,7 @@ public:
                 if (i < elems + sz) *i = value;
                 else std::allocator_traits<Allocator>::construct(alloc, i, value);
             }
+            if (sz > count) std::destroy(elems + count, elems + sz);
         }
         sz = count;
     }
@@ -224,18 +227,22 @@ public:
             std::size_t count = static_cast<std::size_t>(std::distance(first, last));
             if (count > cap) {
                 destroy_deallocate();
+                sz = 0;
                 elems = std::allocator_traits<Allocator>::allocate(alloc, count);
                 cap = count;
-            } else if constexpr (!std::is_trivially_copyable_v<T>) {
-                std::destroy(elems + count, elems + sz);
             }
-            if constexpr (std::is_trivially_copyable_v<T> && std::contiguous_iterator<InputIt>) {
-                std::memmove(elems, &*first, count * sizeof(T));
+            if constexpr (std::is_trivially_copyable_v<T>) {
+                if constexpr (std::contiguous_iterator<InputIt>) {
+                    std::memmove(elems, &*first, count * sizeof(T));
+                } else {
+                    std::copy(first, last, elems);
+                }
             } else {
                 for (T* i = elems; i < elems + count; ++i, ++first) {
                     if (i < elems + sz) *i = *first;
                     else std::allocator_traits<Allocator>::construct(alloc, i, *first);
                 }
+                if (sz > count) std::destroy(elems + count, elems + sz);
             }
             sz = count;
         } else {
