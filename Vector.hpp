@@ -1,7 +1,7 @@
 #pragma once
 
-#ifndef VECTOR_GROW
-#define VECTOR_GROW 2
+#ifndef _VECTOR_GROW
+#define _VECTOR_GROW 2
 #endif
 
 #include <algorithm>
@@ -21,6 +21,7 @@
 
 
 template<class T, class Allocator = std::allocator<T>>
+requires std::is_same_v<T, typename Allocator::value_type>
 class Vector {
 public:
     using value_type = T;
@@ -346,8 +347,7 @@ public:
 
     constexpr iterator insert(const_iterator pos, const T& value) {
         size_type index = pos - elems;
-        if (index > sz) resize(index);
-        if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
+        if (sz == cap) reserve(sz ? sz * _VECTOR_GROW : 1);
         if (index < sz) {
             if constexpr (std::is_trivially_copyable_v<T>) std::memmove(elems + index + 1, elems + index, (sz - index) * sizeof(T));
             else {
@@ -362,8 +362,7 @@ public:
 
     constexpr iterator insert(const_iterator pos, T&& value) {
         size_type index = pos - elems;
-        if (index > sz) resize(index);
-        if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
+        if (sz == cap) reserve(sz ? sz * _VECTOR_GROW : 1);
         if (index < sz) {
             if constexpr (std::is_trivially_copyable_v<T>) std::memmove(elems + index + 1, elems + index, (sz - index) * sizeof(T));
             else {
@@ -379,8 +378,7 @@ public:
     constexpr iterator insert(const_iterator pos, std::size_t count, const T& value) {
         if (count == 0) return const_cast<iterator>(pos);
         size_type index = pos - elems;
-        if (index > sz) resize(index);
-        if (sz + count > cap) reserve(std::max(sz ? sz * VECTOR_GROW : 1, sz + count));
+        if (sz + count > cap) reserve(std::max(sz ? sz * _VECTOR_GROW : 1, sz + count));
         if constexpr (std::is_trivially_copyable_v<T>) std::memmove(elems + index + count, elems + index, (sz - index) * sizeof(T));
         else {
             for (T* i = elems + sz + count - 1; i >= elems + index + count; --i) {
@@ -396,11 +394,10 @@ public:
     template<std::input_iterator InputIt>
     constexpr iterator insert(const_iterator pos, InputIt first, InputIt last) {
         size_type index = pos - elems;
-        if (index > sz) resize(index);
         if constexpr (std::forward_iterator<InputIt>) {
             if (first == last) return const_cast<iterator>(pos);
             std::size_t count = static_cast<std::size_t>(std::distance(first, last));
-            if (sz + count > cap) reserve(std::max(sz ? sz * VECTOR_GROW : 1, sz + count));
+            if (sz + count > cap) reserve(std::max(sz ? sz * _VECTOR_GROW : 1, sz + count));
             if constexpr (std::is_trivially_copyable_v<T>) {
                 std::memmove(elems + index + count, elems + index, (sz - index) * sizeof(T));
                 if constexpr (std::contiguous_iterator<InputIt>) std::memmove(elems + index, &*first, count * sizeof(T));
@@ -425,8 +422,7 @@ public:
 	template<class Arg>
 	constexpr iterator emplace(const_iterator pos, Arg&& arg) {
 	    size_type index = pos - elems;
-	    if (index > sz) resize(index);
-	    if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
+	    if (sz == cap) reserve(sz ? sz * _VECTOR_GROW : 1);
 	    if (index == sz) {
 	        std::allocator_traits<Allocator>::construct(alloc, elems + sz, std::forward<Arg>(arg));
 	    } else {
@@ -469,20 +465,20 @@ public:
 
 
     constexpr void push_back(const T& value) {
-        if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
+        if (sz == cap) reserve(sz ? sz * _VECTOR_GROW : 1);
         std::allocator_traits<Allocator>::construct(alloc, elems + sz, value);
         ++sz;
     }
 
     constexpr void push_back(T&& value) {
-        if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
+        if (sz == cap) reserve(sz ? sz * _VECTOR_GROW : 1);
         std::allocator_traits<Allocator>::construct(alloc, elems + sz, std::move(value));
         ++sz;
     }
 
     template<class Arg>
     constexpr T& emplace_back(Arg&& arg) {
-        if (sz == cap) reserve(sz ? sz * VECTOR_GROW : 1);
+        if (sz == cap) reserve(sz ? sz * _VECTOR_GROW : 1);
         std::allocator_traits<Allocator>::construct(alloc, elems + sz, std::forward<Arg>(arg));
         return elems[sz++];
     }
@@ -865,7 +861,7 @@ public:
     }
 
     constexpr iterator insert(const_iterator pos, bool&& value) { return insert(pos, value); }
-
+    
     constexpr iterator insert(const_iterator pos, size_type count, const bool& value) {
         size_type index  = static_cast<size_type>(pos - cbegin());
         if (index > sz) resize(index);
@@ -881,7 +877,7 @@ public:
             if (value) {
                 if (sw == ew) {
                     elems[sw] |= ~((sb == 0) ? word_type(0) : ((word_type(1) << sb) - 1)) & ((word_type(1) << eb) - 1);
-                    elems[sw] &= (word_type(1) << eb) - 1;
+                    if (eb != 0) elems[sw] &= (word_type(1) << eb) - 1;
                 } else {
                     elems[sw] |= ~((word_type(1) << sb) - 1);
                     for (size_type w = sw + 1; w < ew; ++w) elems[w] = ~word_type(0);
@@ -1001,7 +997,7 @@ public:
         else elems.pop_back();
         return iterator(elems.data(), index);
     }
-
+    
     constexpr iterator erase(const_iterator first, const_iterator last) {
         size_type index  = static_cast<size_type>(first - cbegin());
         if (index > sz) {
@@ -1055,7 +1051,7 @@ public:
     }
 
     constexpr void push_back(const bool& value) {
-        if (sz == capacity()) reserve(sz ? sz * VECTOR_GROW : 1);
+        if (sz == capacity()) reserve(sz ? sz * _VECTOR_GROW : 1);
         size_type b = bit_index(sz);
         if (b == 0) elems.push_back(word_type(0));
         if (value) elems.back() |= word_type(1) << b;
