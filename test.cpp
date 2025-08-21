@@ -197,21 +197,47 @@ static void test_insert_single_all_positions() {
 
 template<class VB>
 static void test_insert_count_edges() {
-    VB v;
-    // make sure we cross word boundaries
+    using SVB = std::vector<bool>;
     const size_t WB = VB::word_bit;
-    const size_t N = WB*2 + 7;
-    v.assign(N, false);
 
-    // insert true block exactly at boundary
-    v.insert(v.begin() + WB, WB, true);
-    CHECK(v.size() == N + WB);
-    for (size_t i = WB; i < WB*2; ++i) CHECK(static_cast<bool>(v[i]) == true);
+    auto run_case = [&](size_t pos, size_t count, bool val, size_t init_size) {
+        VB v(init_size, false);
+        SVB s(init_size, false);
 
-    // insert zero count is no-op
-    auto before = v.size();
-    v.insert(v.begin()+3, 0, true);
-    CHECK(v.size() == before);
+        v.insert(v.begin() + pos, count, val);
+        s.insert(s.begin() + pos, count, val);
+
+        CHECK(v.size() == s.size());
+        for (size_t i = 0; i < v.size(); ++i) {
+            CHECK(static_cast<bool>(v[i]) == static_cast<bool>(s[i]));
+        }
+    };
+
+    const size_t N = WB * 2 + 7;
+
+    // 1. Insert exactly at word boundary
+    run_case(WB, WB, true, N);
+
+    // 2. Insert zero count (no-op)
+    run_case(3, 0, true, N);
+
+    // 3. Insert at beginning
+    run_case(0, 5, true, N);
+
+    // 4. Insert at end (append)
+    run_case(N, 5, true, N);
+
+    // 5. Insert in the middle inside one word
+    run_case(WB / 2, 3, true, N);
+
+    // 6. Insert crossing word boundary (forces bit_diff > 0)
+    run_case(WB - 3, 10, true, N);
+
+    // 7. Insert large block to trigger multiple reallocations
+    run_case(WB + 5, WB * 3, true, N);
+
+    // 8. Insert false values (check clearing bits)
+    run_case(WB / 2, 7, false, N);
 }
 
 template<class VB>
