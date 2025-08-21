@@ -828,9 +828,7 @@ public:
     constexpr std::size_t size() const noexcept { return sz; }
     constexpr std::size_t max_size() const noexcept { return elems.max_size() * word_bit; }
 
-    constexpr void reserve(std::size_t new_cap) {
-        elems.reserve((new_cap + word_bit - 1) / word_bit);
-    }
+    constexpr void reserve(std::size_t new_cap) { elems.reserve((new_cap + word_bit - 1) / word_bit); }
 
     constexpr std::size_t capacity() const noexcept { return elems.capacity() * word_bit; }
 
@@ -844,26 +842,20 @@ public:
     constexpr iterator insert(const_iterator pos, const bool& value) {
         size_type index = static_cast<size_type>(pos - cbegin());
         if (index > sz) resize(index);
-        if (sz % word_bit == 0) elems.push_back(word_type(0));
         if (index == sz) {
-            if (value) elems[word_index(sz)] |= bit_mask(sz);
-            else elems[word_index(sz)] &= ~bit_mask(sz);
-            ++sz;
+            push_back(value);
             return iterator(elems.data(), index);
         }
+        if (sz % word_bit == 0) elems.push_back(word_type(0));
         ++sz;
         std::size_t w = word_index(index);
         std::size_t b = bit_index(index);
         for (auto i = elems.end() - 1; i > elems.begin() + w; --i) {
-            *i <<= 1;
-            *i |= *(i - 1) >> (word_bit - 1);
+            *i = (*i << 1) | (*(i - 1) >> (word_bit - 1));
         }
         if (b != 0) {
             word_type mask = (word_type(1) << b) - 1;
-            word_type lower = elems[w] & mask;
-            elems[w] &= ~mask;
-            elems[w] <<= 1;
-            elems[w] |= lower;
+            elems[w] = (elems[w] & mask) | ((elems[w] & ~mask) << 1);
         }
         if (value) elems[w] |= (word_type(1) << b);
         else elems[w] &= ~(word_type(1) << b);
@@ -891,7 +883,7 @@ public:
                 } else {
                     elems[sw] |= ~((word_type(1) << sb) - 1);
                     for (size_type w = sw + 1; w < ew; ++w) elems[w] = ~word_type(0);
-                    if (eb) elems[ew] |= (word_type(1) << eb) - 1;
+                    if (eb != 0) elems[ew] |= (word_type(1) << eb) - 1;
                 }
             } else elems[sw] &= (sb == 0) ? word_type(0) : ((word_type(1) << sb) - 1);
             sz = new_sz;
@@ -902,7 +894,7 @@ public:
         size_type word_shift = count / word_bit;
         size_type bit_shift = count % word_bit;
         if (bit_shift == 0) {
-            if (word_shift) std::memmove(static_cast<void*>(&elems[sw + word_shift]), static_cast<const void*>(&elems[sw]), ((sz + word_bit - 1) / word_bit - sw) * sizeof(word_type));
+            if (word_shift != 0) std::memmove(static_cast<void*>(&elems[sw + word_shift]), static_cast<const void*>(&elems[sw]), ((sz + word_bit - 1) / word_bit - sw) * sizeof(word_type));
         } else {
             for (auto i = elems.end() - 1; i >= elems.begin() + word_index(index + count); --i) {
                 *i = (*(i - word_shift) << bit_shift) | (*(i - word_shift - 1) >> (word_bit - bit_shift));
@@ -918,13 +910,13 @@ public:
             } else {
                 elems[sw] |= ~((word_type(1) << sb) - 1);
                 for (size_type w = sw + 1; w < ew; ++w) elems[w] = ~word_type(0);
-                if (eb) elems[ew] |= (word_type(1) << eb) - 1;
+                if (eb != 0) elems[ew] |= (word_type(1) << eb) - 1;
             }
         } else {
             elems[sw] &= (sb == 0) ? word_type(0) : ((word_type(1) << sb) - 1);
             if (sw != ew) {
                for (size_type w = sw + 1; w < ew; ++w) elems[w] = word_type(0);
-               if (eb) elems[ew] &= ~((word_type(1) << eb) - 1);
+               if (eb != 0) elems[ew] &= ~((word_type(1) << eb) - 1);
             }
         }
         sz = new_sz;
@@ -939,17 +931,17 @@ public:
             std::size_t count = static_cast<std::size_t>(std::distance(first, last));
             if (count == 0) return iterator(elems.data(), index);
             insert(pos, count, false);
-            const size_type index = pos - cbegin();
+            size_type index = pos - cbegin();
             size_type cur = index;
             for (; first != last; ++first, ++cur) {
                 if (static_cast<bool>(*first)) elems[word_index(cur)] |= bit_mask(cur);
             }
             return iterator(elems.data(), index);
         } else {
-            const size_type index = pos - cbegin();
-            size_type cur_pos = iterator(elems.data(), index);
-            for (; first != last; ++first, ++cur_pos) {
-                insert(const_iterator(cur_pos), static_cast<bool>(*first));
+            size_type index = pos - cbegin();
+            size_type cur = iterator(elems.data(), index);
+            for (; first != last; ++first, ++cur) {
+                insert(const_iterator(cur), static_cast<bool>(*first));
             }
             return iterator(elems.data(), index);
         }
@@ -965,14 +957,14 @@ public:
     constexpr iterator erase(const_iterator pos) {
         size_type index = static_cast<size_type>(pos - cbegin());
         if (index > sz) {
-            resize(index - 1);
+            resize(index);
             return end();
         }
         if (index == sz) return end();
         --sz;
         size_type last_bits = bit_index(sz);
         if (index == sz) {
-            if (last_bits != 0) elems[word_index(sz)] &= (word_type(1) << last_bits) - 1;
+            if (last_bits != 0) elems.back() &= (word_type(1) << last_bits) - 1;
             else elems.pop_back();
             return iterator(elems.data(), index);
         }
@@ -987,7 +979,7 @@ public:
             *i |= (*(i + 1) & word_type(1)) << (word_bit - 1);
         }
         *(elems.end() - 1) >>= 1;
-        if (last_bits != 0) elems[word_index(sz)] &= (word_type(1) << last_bits) - 1;
+        if (last_bits != 0) elems.back() &= (word_type(1) << last_bits) - 1;
         else elems.pop_back();
         return iterator(elems.data(), index);
     }
@@ -995,7 +987,7 @@ public:
     constexpr iterator erase(const_iterator first, const_iterator last) {
         size_type index  = static_cast<size_type>(first - cbegin());
         if (index > sz) {
-            resize(index - 1);
+            resize(index);
             return end();
         }
         if (index == sz) return end();
@@ -1046,10 +1038,9 @@ public:
 
     constexpr void push_back(const bool& value) {
         if (sz == capacity()) reserve(sz ? sz * VECTOR_GROW : 1);
-        size_type w = word_index(sz);
         size_type b = bit_index(sz);
         if (b == 0) elems.push_back(word_type(0));
-        if (value) elems[w] |= (word_type(1) << b);
+        if (value) elems.back() |= word_type(1) << b;
         ++sz;
     }
 
@@ -1065,33 +1056,26 @@ public:
     constexpr void pop_back() {
         if (sz == 0) return;
         --sz;
-        elems[word_index(sz)] &= ~bit_mask(sz);
+        if (bit_index(sz) == 0) elems.pop_back();
+        else elems.back() &= ~bit_mask(sz);
     }
 
     constexpr void resize(std::size_t new_size) {
-        size_type last_bits = bit_index(sz);
         elems.resize((new_size + word_bit - 1) / word_bit);
-        if (last_bits && new_size) elems[word_index(sz)] &= (word_type(1) << last_bits) - 1;
         sz = new_size;
     }
 
     constexpr void resize(std::size_t new_size, const bool& value) {
         if (value) {
             elems.resize((new_size + word_bit - 1) / word_bit, ~word_type(0));
-            if (new_size) {
+            if (new_size > sz) {
                 size_type last_bits = bit_index(sz);
                 if (last_bits != 0) elems[word_index(sz)] |= ~((word_type(1) << last_bits) - 1);
-                last_bits = bit_index(new_size);
-                if (last_bits != 0) elems.back() &= (word_type(1) << last_bits) - 1;
             }
-        } else {
-            elems.resize((new_size + word_bit - 1) / word_bit);
-            if (new_size) {
-                size_type last_bits = bit_index(sz);
-                if (last_bits != 0) elems[word_index(sz)] &= (word_type(1) << last_bits) - 1;
-            }
-        }
-        sz = new_size;
+            size_type last_bits = bit_index(new_size);
+            if (last_bits != 0) elems.back() &= (word_type(1) << last_bits) - 1;
+            sz = new_size;
+        } else resize(new_size);
     }
 
     constexpr void swap(Vector<bool, Allocator>& other) noexcept(std::allocator_traits<Allocator>::propagate_on_container_swap::value || std::allocator_traits<Allocator>::is_always_equal::value) {
@@ -1103,7 +1087,7 @@ public:
         if (sz == 0) return;
         for (auto& word : elems) word = ~word;
         size_type last_bits = bit_index(sz);
-        if (last_bits != 0) elems[word_index(sz)] &= (word_type(1) << last_bits) - 1;
+        if (last_bits != 0) elems.back() &= (word_type(1) << last_bits) - 1;
     }
 
     static constexpr void swap(reference x, reference y) {
