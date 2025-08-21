@@ -342,8 +342,8 @@ template<class VB>
 static void test_at_randomized_equivalence() {
     VB v;
     std::vector<bool> s;
-    std::mt19937 rng(40);
-    for (int t = 0; t < 2000; ++t) {
+    std::mt19937 rng(42);
+    for (int t = 0; t < 10000; ++t) {
         int op = rng() % 8;
         std::string op_name;
         size_t idx = 0;
