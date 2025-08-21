@@ -872,7 +872,7 @@ public:
         if (count == 0) return iterator(elems.data(), index);
         size_type new_sz = sz + count;
         size_type need_words = (new_sz + word_bit - 1) / word_bit;
-        if (elems.size() < need_words) elems.resize(need_words, word_type(0));
+        if (elems.size() < need_words) elems.resize(need_words);
         if (index == sz) {
             size_type sw = word_index(sz);
             size_type sb = bit_index(sz);
@@ -887,25 +887,24 @@ public:
                     for (size_type w = sw + 1; w < ew; ++w) elems[w] = ~word_type(0);
                     if (eb != 0) elems[ew] |= (word_type(1) << eb) - 1;
                 }
-            } else elems[sw] &= (sb == 0) ? word_type(0) : ((word_type(1) << sb) - 1);
+            }
             sz = new_sz;
             return iterator(elems.data(), index);
         }
         size_type sw = word_index(index);
         size_type sb = bit_index(index);
-        size_type word_shift = count / word_bit;
-        size_type bit_shift = count % word_bit;
-        if (bit_shift == 0) {
-            if (word_shift != 0) std::memmove(static_cast<void*>(&elems[sw + word_shift]), static_cast<const void*>(&elems[sw]), ((sz + word_bit - 1) / word_bit - sw) * sizeof(word_type));
-        } else {
-            for (auto i = elems.end() - 1; i >= elems.begin() + word_index(index + count); --i) {
-                *i = (*(i - word_shift) << bit_shift) | (*(i - word_shift - 1) >> (word_bit - bit_shift));
-            }
-        }
-        elems[sw] &= (sb == 0) ? word_type(0) : ((word_type(1) << sb) - 1);
         size_type end_bit = index + count;
         size_type ew = word_index(end_bit);
         size_type eb = bit_index(end_bit);
+        size_type word_diff = ew - sw;
+        size_type bit_diff = eb - sb;
+        if (bit_diff == 0) std::memmove(static_cast<void*>(&elems[ew]), static_cast<const void*>(&elems[sw]), ((sz + word_bit - 1) / word_bit - sw) * sizeof(word_type));
+        else if (word_diff != 0) {
+            for (auto i = elems.end() - 1; i >= elems.begin() + ew; --i) {
+                *i = (*(i - word_diff) << bit_diff) | (*(i - word_diff - 1) >> (word_bit - bit_diff));
+            }
+            elems[sw] &= (sb == 0) ? word_type(0) : ((word_type(1) << sb) - 1);
+        } else elems[sw] = (elems[sw] & ((sb == 0) ? word_type(0) : ((word_type(1) << sb) - 1))) & ((elems[sw] & ~((word_type(1) << eb) - 1)) << bit_diff);
         if (value) {
             if (sw == ew) {
                 elems[sw] |= ~((sb == 0) ? word_type(0) : ((word_type(1) << sb) - 1)) & ((word_type(1) << eb) - 1);
