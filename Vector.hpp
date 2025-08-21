@@ -850,15 +850,17 @@ public:
         ++sz;
         std::size_t w = word_index(index);
         std::size_t b = bit_index(index);
-        for (auto i = elems.end() - 1; i > elems.begin() + w + 1; --i) {
+        for (auto i = elems.end() - 1; i > elems.begin() + w; --i) {
             *i = (*i << 1) | (*(i - 1) >> (word_bit - 1));
         }
         if (b != 0) {
             word_type mask = (word_type(1) << b) - 1;
             elems[w] = (elems[w] & mask) | ((elems[w] & ~mask) << 1);
-        } else elems[w] << 1;
+        } else elems[w] <<= 1;
         if (value) elems[w] |= (word_type(1) << b);
         else elems[w] &= ~(word_type(1) << b);
+        word_type last_bits = bit_index(sz);
+        if (last_bits != 0) elems.back() &= (word_type(1) << last_bits) - 1;
         return iterator(elems.data(), index);
     }
 
