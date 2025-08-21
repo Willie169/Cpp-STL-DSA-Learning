@@ -344,9 +344,10 @@ static void test_at_randomized_equivalence() {
     std::vector<bool> s;
     std::mt19937 rng(42);
     for (int t = 0; t < 10000; ++t) {
-        int op = rng() % 8;
+        int op = rng() % 9;
         std::string op_name;
         size_t idx = 0;
+        size_t idx1 = 0;
         bool val = false;
         size_t cnt = 0;
         if (op == 0) { // push_back
@@ -399,6 +400,17 @@ static void test_at_randomized_equivalence() {
             val = rng() & 1;
             v.insert(v.begin() + idx, cnt, val);
             s.insert(s.begin() + idx, cnt, val);
+        } else if (!s.empty()) { // erase range
+            op_name = "erase_range";
+            idx = rng() % s.size();
+            idx1 = rng() % s.size();
+            if (idx1 < idx) {
+                size_t tmp = idx;
+                idx = idx1;
+                idx1 = tmp;
+            }
+            v.erase(v.begin() + idx, v.begin() + idx1);
+            s.erase(s.begin() + idx, s.begin() + idx1);
         }
         // verify equality
         if (v.size() != s.size()) {
