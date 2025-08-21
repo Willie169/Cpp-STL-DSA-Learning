@@ -422,10 +422,10 @@ static void test_at_randomized_equivalence() {
         }
         for (size_t i = 0; i < s.size(); ++i) {
             if (static_cast<bool>(v[i]) != static_cast<bool>(s[i])) {
-                std::cerr << "Value mismatch after operation " << op_name << " at index " << i << ": (i, o, v[i], s[i]) = ";
+                std::cerr << "Value mismatch after operation " << op_name << " at index " << i << ": (i, v[i], s[i]) = ";
                 i--;
-                for (; i < s.size(); ++i) cout << "(" << i << ", " << static_cast<bool>(o[i]) << ", " << static_cast<bool>(v[i]) << ", " << static_cast<bool>(s[i]) << "), ";
-                cout << "v.size() = " << v.size() << ", s.size() = " << s.size() << "\n";
+                for (; i < s.size(); ++i) cout << "(" << i << ", " << static_cast<bool>(v[i]) << ", " << static_cast<bool>(s[i]) << "), ";
+                cout << "o.back() = " << o.back() << ", " << "v.size() = " << v.size() << ", s.size() = " << s.size() << "\n";
                 std::terminate();
             }
         }

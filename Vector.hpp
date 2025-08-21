@@ -897,16 +897,23 @@ public:
         size_type ew = word_index(end_bit);
         size_type eb = bit_index(end_bit);
         size_type word_diff = ew - sw;
-        size_type bit_diff = eb - sb;
+        difference_type bit_diff = eb - sb;
         if (bit_diff == 0) std::memmove(static_cast<void*>(&elems[ew]), static_cast<const void*>(&elems[sw]), ((sz + word_bit - 1) / word_bit - sw) * sizeof(word_type));
-        else if (word_diff != 0) {
-            for (auto i = elems.end() - 1; i >= elems.begin() + ew + 1; --i) {
-                *i = (*(i - word_diff) << bit_diff) | (*(i - word_diff - 1) >> (word_bit - bit_diff));
+        else if (bit_diff > 0) {
+            if (word_diff != 0) {
+                for (auto i = elems.end() - 1; i >= elems.begin() + ew + 1; --i) {
+                    *i = (*(i - word_diff) << bit_diff) | (*(i - word_diff - 1) >> (word_bit - bit_diff));
+                }
+                elems[ew] = elems[sw] << bit_diff;
+                elems[sw] &= (sb == 0) ? word_type(0) : ((word_type(1) << sb) - 1);
+            } else elems[sw] = (elems[sw] & ((sb == 0) ? word_type(0) : ((word_type(1) << sb) - 1))) & ((elems[sw] & ~((word_type(1) << eb) - 1)) << bit_diff);
+        } else {
+            size_type rshift = static_cast<std::size_t>(-bit_diff);
+            for (auto i = elems.end() - 1; i >= elems.begin() + ew; --i) {
+                *i = (*(i - word_diff) >> rshift) | (*(i - word_diff + 1) << (word_bit - rshift));
             }
             elems[sw] &= (sb == 0) ? word_type(0) : ((word_type(1) << sb) - 1);
-            elems[ew] = elems[ew - word_diff] << bit_diff;
-            if (ew - word_diff - 1 >= 0) elems[ew] |= elems[ew - word_diff - 1] >> (word_bit - bit_diff);
-        } else elems[sw] = (elems[sw] & ((sb == 0) ? word_type(0) : ((word_type(1) << sb) - 1))) & ((elems[sw] & ~((word_type(1) << eb) - 1)) << bit_diff);
+        }
         if (value) {
             if (sw == ew) {
                 elems[sw] |= ~((sb == 0) ? word_type(0) : ((word_type(1) << sb) - 1)) & ((word_type(1) << eb) - 1);
