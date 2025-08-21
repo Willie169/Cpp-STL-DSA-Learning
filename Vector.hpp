@@ -910,7 +910,7 @@ public:
                 for (auto i = elems.end() - 1; i > elems.begin() + ew; --i) {
                     *i = (*i << bit_diff) | (*(i - 1) >> (word_bit - bit_diff));
                 }
-                word_type mask = (sb == 0) ? word_type(0) : (word_type(1) << sb) - 1;
+                word_type mask = (sb == 0) ? word_type(0) : ((word_type(1) << sb) - 1);
                 elems[sw] = (elems[sw] & mask) | ((elems[sw] & ~mask) << bit_diff);
             }
         } else {
@@ -929,7 +929,7 @@ public:
                 if (eb != 0) elems[ew] |= (word_type(1) << eb) - 1;
             }
         } else {
-            elems[sw] &= (sb == 0) ? word_type(0) : (word_type(1) << sb) - 1;
+            elems[sw] &= (sb == 0) ? word_type(0) : ((word_type(1) << sb) - 1);
             if (sw != ew) {
                for (size_type w = sw + 1; w < ew; ++w) elems[w] = word_type(0);
                if (eb != 0) elems[ew] &= ~((word_type(1) << eb) - 1);
