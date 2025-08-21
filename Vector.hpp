@@ -922,6 +922,8 @@ public:
             }
         }
         sz = new_sz;
+        word_type last_bits = bit_index(sz);
+        if (last_bits != 0) elems.back() &= (word_type(1) << last_bits) - 1;
         return iterator(elems.data(), index);
     }
 

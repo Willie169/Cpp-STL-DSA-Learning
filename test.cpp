@@ -395,12 +395,12 @@ static void test_at_randomized_equivalence() {
             for (auto&& x : s) x = !x;
         }
         else if (op == 7) { // insert count
-            op_name = "insert_count";
             idx = s.empty() ? 0 : (rng() % (s.size() + 1));
             cnt = rng() % 40;
             val = rng() & 1;
             v.insert(v.begin() + idx, cnt, val);
             s.insert(s.begin() + idx, cnt, val);
+            op_name = "insert_count_" + to_string(idx) + "_" + to_string(cnt) + "_" + to_string(val);
         } else if (!s.empty()) { // erase range
             op_name = "erase_range";
             idx = rng() % s.size();
@@ -421,7 +421,10 @@ static void test_at_randomized_equivalence() {
         }
         for (size_t i = 0; i < s.size(); ++i) {
             if (static_cast<bool>(v[i]) != static_cast<bool>(s[i])) {
-                std::cerr << "Value mismatch after operation " << op_name << " at index " << i << ": v[" << i << "] = " << static_cast<bool>(v[i]) << ", s[" << i << "] = " << s[i] << ", v.size() = " << v.size() << ", s.size() = " << s.size() << "\n";
+                std::cerr << "Value mismatch after operation " << op_name << " at index " << i << ": (v, s) = ";
+                i--;
+                for (; i < s.size(); ++i) cout << "(" << static_cast<bool>(v[i]) << ", " << static_cast<bool>(s[i]) << "), ";
+                cout << "v.size() = " << v.size() << ", s.size() = " << s.size() << "\n";
                 std::terminate();
             }
         }
