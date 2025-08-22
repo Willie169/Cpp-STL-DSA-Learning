@@ -33,41 +33,40 @@ class _Bit_iterator {
 public:
     using difference_type = std::ptrdiff_t;
     using value_type = bool;
-    using pointer = vector::pointer;
-    using reference = vector::reference;
+    using pointer = _Bit_pointer;
+    using _Bit_reference = _Bit_reference;
     using iterator_category = std::random_access_iterator_tag;
 
-    iterator() = default;
-    iterator(unsigned long long* d, std::size_t o) : data(d), offset(o) {}
-    operator const_iterator() const noexcept { return const_iterator(data, offset); }
+    _Bit_iterator() = default;
+    _Bit_iterator(unsigned long long* d, std::size_t o) : data(d), offset(o) {}
+    operator _Bit_const_iterator() const noexcept { return _Bit_const_iterator(data, offset); }
 
-    reference operator*() const { return reference(data, offset); }
-    pointer operator->() const { return pointer(data, offset); }
+    _Bit_reference operator*() const { return _Bit_reference(data, offset); }
 
-    iterator& operator++() { ++offset; return *this; }
-    iterator operator++(int) { iterator tmp = *this; ++*this; return tmp; }
+    _Bit_iterator& operator++() { ++offset; return *this; }
+    _Bit_iterator operator++(int) { _Bit_iterator tmp = *this; ++*this; return tmp; }
 
-    iterator& operator--() { --offset; return *this; }
-    iterator operator--(int) { iterator tmp = *this; --*this; return tmp; }
+    _Bit_iterator& operator--() { --offset; return *this; }
+    _Bit_iterator operator--(int) { _Bit_iterator tmp = *this; --*this; return tmp; }
 
-    iterator& operator+=(std::ptrdiff_t n) { offset += n; return *this; }
-    iterator operator+(std::ptrdiff_t n) const { return iterator(data, offset + n); }
-    friend iterator operator+(std::ptrdiff_t n, const iterator& it) { return it + n; }
+    _Bit_iterator& operator+=(std::ptrdiff_t n) { offset += n; return *this; }
+    _Bit_iterator operator+(std::ptrdiff_t n) const { return _Bit_iterator(data, offset + n); }
+    friend _Bit_iterator operator+(std::ptrdiff_t n, const _Bit_iterator& it) { return it + n; }
 
-    iterator& operator-=(std::ptrdiff_t n) { offset -= n; return *this; }
-    iterator operator-(std::ptrdiff_t n) const { return iterator(data, offset - n); }
-    std::ptrdiff_t operator-(const iterator& rhs) const { return offset - rhs.offset; }
+    _Bit_iterator& operator-=(std::ptrdiff_t n) { offset -= n; return *this; }
+    _Bit_iterator operator-(std::ptrdiff_t n) const { return _Bit_iterator(data, offset - n); }
+    std::ptrdiff_t operator-(const _Bit_iterator& rhs) const { return offset - rhs.offset; }
 
-    reference operator[](std::ptrdiff_t n) const { return *(*this + n); }
+    _Bit_reference operator[](std::ptrdiff_t n) const { return *(*this + n); }
 
-    bool operator==(const iterator& rhs) const = default;
-    auto operator<=>(const iterator& rhs) const = default;
-    friend bool operator==(const iterator& lhs, const const_iterator& rhs) noexcept { return lhs == static_cast<iterator>(rhs); }
-    friend auto operator<=>(const iterator& lhs, const const_iterator& rhs) noexcept { return lhs <=> static_cast<iterator>(rhs); }
+    bool operator==(const _Bit_iterator& rhs) const = default;
+    auto operator<=>(const _Bit_iterator& rhs) const = default;
+    friend bool operator==(const _Bit_iterator& lhs, const _Bit_const_iterator& rhs) noexcept { return lhs == static_cast<_Bit_iterator>(rhs); }
+    friend auto operator<=>(const _Bit_iterator& lhs, const _Bit_const_iterator& rhs) noexcept { return lhs <=> static_cast<_Bit_iterator>(rhs); }
 };
 
 
-class const_iterator {
+class _Bit_const_iterator {
     const unsigned long long* data;
     std::size_t offset;
 
@@ -75,12 +74,12 @@ public:
     using difference_type = std::ptrdiff_t;
     using value_type = bool;
     using pointer = void;
-    using reference = bool;
+    using _Bit_reference = bool;
     using iterator_category = std::random_access_iterator_tag;
 
-    const_iterator() = default;
-    const_iterator(const unsigned long long* d, std::size_t o) : data(d), offset(o) {}
-    operator iterator() const noexcept { return iterator(data, offset); }
+    _Bit_const_iterator() = default;
+    _Bit_const_iterator(const unsigned long long* d, std::size_t o) : data(d), offset(o) {}
+    operator _Bit_iterator() const noexcept { return _Bit_iterator(data, offset); }
 
     bool operator*() const {
         std::size_t word = offset / word_bit;
@@ -88,26 +87,26 @@ public:
         return (data[word] >> bit) & unsigned long long(1);
     }
 
-    const_iterator& operator++() { ++offset; return *this; }
-    const_iterator operator++(int) { const_iterator tmp = *this; ++*this; return tmp; }
+    _Bit_const_iterator& operator++() { ++offset; return *this; }
+    _Bit_const_iterator operator++(int) { _Bit_const_iterator tmp = *this; ++*this; return tmp; }
 
-    const_iterator& operator--() { --offset; return *this; }
-    const_iterator operator--(int) { const_iterator tmp = *this; --*this; return tmp; }
+    _Bit_const_iterator& operator--() { --offset; return *this; }
+    _Bit_const_iterator operator--(int) { _Bit_const_iterator tmp = *this; --*this; return tmp; }
 
-    const_iterator& operator+=(std::ptrdiff_t n) { offset += n; return *this; }
-    const_iterator operator+(std::ptrdiff_t n) const { return const_iterator(data, offset + n); }
-    friend const_iterator operator+(std::ptrdiff_t n, const const_iterator& it) { return it + n; }
+    _Bit_const_iterator& operator+=(std::ptrdiff_t n) { offset += n; return *this; }
+    _Bit_const_iterator operator+(std::ptrdiff_t n) const { return _Bit_const_iterator(data, offset + n); }
+    friend _Bit_const_iterator operator+(std::ptrdiff_t n, const _Bit_const_iterator& it) { return it + n; }
 
-    const_iterator& operator-=(std::ptrdiff_t n) { offset -= n; return *this; }
-    const_iterator operator-(std::ptrdiff_t n) const { return const_iterator(data, offset - n); }
-    std::ptrdiff_t operator-(const const_iterator& rhs) const { return offset - rhs.offset; }
+    _Bit_const_iterator& operator-=(std::ptrdiff_t n) { offset -= n; return *this; }
+    _Bit_const_iterator operator-(std::ptrdiff_t n) const { return _Bit_const_iterator(data, offset - n); }
+    std::ptrdiff_t operator-(const _Bit_const_iterator& rhs) const { return offset - rhs.offset; }
 
-    reference operator[](std::ptrdiff_t n) const { return *(*this + n); }
+    _Bit_reference operator[](std::ptrdiff_t n) const { return *(*this + n); }
 
-    bool operator==(const const_iterator& rhs) const = default;
-    auto operator<=>(const const_iterator& rhs) const = default;
-    friend bool operator==(const const_iterator& lhs, const iterator& rhs) noexcept { return lhs == static_cast<const_iterator>(rhs); }
-    friend auto operator<=>(const const_iterator& lhs, const iterator& rhs) noexcept { return lhs <=> static_cast<const_iterator>(rhs); }
+    bool operator==(const _Bit_const_iterator& rhs) const = default;
+    auto operator<=>(const _Bit_const_iterator& rhs) const = default;
+    friend bool operator==(const _Bit_const_iterator& lhs, const _Bit_iterator& rhs) noexcept { return lhs == static_cast<_Bit_const_iterator>(rhs); }
+    friend auto operator<=>(const _Bit_const_iterator& lhs, const _Bit_iterator& rhs) noexcept { return lhs <=> static_cast<_Bit_const_iterator>(rhs); }
 };
 
 
@@ -118,16 +117,15 @@ public:
     using allocator_type = Allocator;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
-    using reference;
+    using reference = _Bit_reference;
     using const_reference = bool;
-    class pointer;
-    using const_pointer = void;
-    class iterator;
-    class const_iterator;
+    using pointer = _Bit_reference*;
+    using const_pointer = const bool*;
+    using iterator = _Bit_iterator;
+    using const_iterator = _Bit_const_iterator;
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
     static constexpr std::size_t word_bit = sizeof(unsigned long long) * CHAR_BIT;
-
 
 private:
     vector<unsigned long long, std::allocator_traits<Allocator>::rebind_alloc<unsigned long long>> elems;
@@ -550,8 +548,8 @@ public:
 namespace std {
 
 template<class Allocator>
-struct hash<vector<bool, Allocator>> {
-    std::size_t operator()(const vector<bool, Allocator>& v) const noexcept {
+struct hash<mystd::vector<bool, Allocator>> {
+    std::size_t operator()(const mystd::vector<bool, Allocator>& v) const noexcept {
         std::size_t h = 0xcbf29ce484222325ull;
         constexpr std::size_t prime = 0x100000001b3ull;
         using unsigned long long = typename Allocator::value_type;

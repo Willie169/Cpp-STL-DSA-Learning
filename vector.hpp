@@ -156,10 +156,7 @@ public:
         }
     }
 
-    constexpr ~vector() {
-        destroy_deallocate();
-        sz = 0;
-    }
+    constexpr ~vector() { destroy_deallocate(); }
 
     constexpr vector& operator=(const vector& other) {
         if (this != &other) {
@@ -294,8 +291,7 @@ public:
     constexpr bool empty() const noexcept { return sz == 0; }
     constexpr std::size_t size() const noexcept { return sz; }
     constexpr std::size_t max_size() const noexcept {
-        return std::min(std::allocator_traits<Allocator>::max_size(alloc),
-                        static_cast<std::size_t>(std::numeric_limits<std::ptrdiff_t>::max()));
+        return std::min(std::allocator_traits<Allocator>::max_size(alloc), static_cast<std::size_t>(std::numeric_limits<std::ptrdiff_t>::max()));
     }
 
     constexpr void reserve(std::size_t new_cap) {
