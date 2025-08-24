@@ -256,12 +256,12 @@ public:
         if (index >= sz) throw std::out_of_range("vector");
         return elems[index];
     }
-    
+
     constexpr const T& at(std::size_t index) const {
         if (index >= sz) throw std::out_of_range("vector");
         return elems[index];
     }
-    
+
     constexpr T& operator[](std::size_t index) { return elems[index]; }
     constexpr const T& operator[](std::size_t index) const { return elems[index]; }
     constexpr T& front() { return elems[0]; }
@@ -618,7 +618,7 @@ constexpr bool operator==(const mystd::vector<T, Allocator>& lhs, const mystd::v
 }
 
 template<class T, class Allocator>
-constexpr auto operator<=>(const mystd::vector<T, Allocator>& lhs, const mystd::vector<T, Allocator>& rhs) { return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end()); }
+constexpr std::strong_ordering operator<=>(const mystd::vector<T, Allocator>& lhs, const mystd::vector<T, Allocator>& rhs) { return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end()); }
 
 namespace std {
 
@@ -646,12 +646,18 @@ constexpr typename mystd::vector<T, Allocator>::size_type erase_if(mystd::vector
 
 namespace mystd {
 
+class _Bit_iterator;
+class _Bit_const_iterator;
+
 class _Bit_reference {
     unsigned long long* p_;
     unsigned long long mask_;
+    static constexpr std::size_t word_bit = sizeof(unsigned long long) * CHAR_BIT;
 
 public:
-    _Bit_reference(unsigned long long* data, std::size_t offset) : p_(data + (offset / word_bit)), mask_(1 << (offset % word_bit)) {}
+    _Bit_reference() = default;
+    _Bit_reference(unsigned long long* data, std::size_t offset) : p_(data + (offset / word_bit)), mask_(1ULL << (offset % word_bit)) {}
+    _Bit_reference(const unsigned long long* data, std::size_t offset) : p_(const_cast<unsigned long long*>(data) + (offset / word_bit)), mask_(1ULL << (offset % word_bit)) {}
     _Bit_reference(const _Bit_reference&) = default;
     ~_Bit_reference() = default;
 
@@ -671,21 +677,23 @@ public:
     void flip() noexcept { *p_ ^= mask_; }
 };
 
-
 class _Bit_iterator {
     unsigned long long* data;
     std::size_t offset;
+    friend class _Bit_const_iterator;
+    static constexpr std::size_t word_bit = sizeof(unsigned long long) * CHAR_BIT;
 
 public:
     using difference_type = std::ptrdiff_t;
     using value_type = bool;
-    using pointer = _Bit_pointer;
+    using pointer = _Bit_reference*;
     using reference = _Bit_reference;
     using iterator_category = std::random_access_iterator_tag;
 
     _Bit_iterator() = default;
-    _Bit_iterator(unsigned long long* d, std::size_t o) : data(d), offset(o) {}
-    operator _Bit_const_iterator() const noexcept { return _Bit_const_iterator(data, offset); }
+    _Bit_iterator(unsigned long long* d, std::size_t o) noexcept : data(d), offset(o) {}
+    _Bit_iterator(const unsigned long long* d, std::size_t o) noexcept : data(const_cast<unsigned long long*>(d)), offset(o) {}
+    _Bit_iterator(const _Bit_const_iterator& other) noexcept;
 
     _Bit_reference operator*() const { return _Bit_reference(data, offset); }
 
@@ -706,26 +714,30 @@ public:
     _Bit_reference operator[](std::ptrdiff_t n) const { return *(*this + n); }
 
     bool operator==(const _Bit_iterator& rhs) const = default;
-    auto operator<=>(const _Bit_iterator& rhs) const = default;
-    friend bool operator==(const _Bit_iterator& lhs, const _Bit_const_iterator& rhs) noexcept { return lhs == static_cast<_Bit_iterator>(rhs); }
-    friend auto operator<=>(const _Bit_iterator& lhs, const _Bit_const_iterator& rhs) noexcept { return lhs <=> static_cast<_Bit_iterator>(rhs); }
+    std::strong_ordering operator<=>(const _Bit_iterator& rhs) const = default;
+
+    friend bool operator==(const _Bit_iterator& lhs, const _Bit_const_iterator& rhs) noexcept;
+    friend std::strong_ordering operator<=>(const _Bit_iterator& lhs, const _Bit_const_iterator& rhs) noexcept;
 };
 
 
 class _Bit_const_iterator {
     const unsigned long long* data;
     std::size_t offset;
+    friend class _Bit_iterator;
+    static constexpr std::size_t word_bit = sizeof(unsigned long long) * CHAR_BIT;
 
 public:
     using difference_type = std::ptrdiff_t;
     using value_type = bool;
-    using pointer = void;
+    using pointer = const bool*;
     using reference = bool;
     using iterator_category = std::random_access_iterator_tag;
 
     _Bit_const_iterator() = default;
-    _Bit_const_iterator(const unsigned long long* d, std::size_t o) : data(d), offset(o) {}
-    operator _Bit_iterator() const noexcept { return _Bit_iterator(data, offset); }
+    _Bit_const_iterator(unsigned long long* d, std::size_t o) noexcept : data(d), offset(o) {}
+    _Bit_const_iterator(const unsigned long long* d, std::size_t o) noexcept : data(d), offset(o) {}
+    _Bit_const_iterator(const _Bit_iterator& other) noexcept;
 
     bool operator*() const {
         std::size_t word = offset / word_bit;
@@ -747,13 +759,22 @@ public:
     _Bit_const_iterator operator-(std::ptrdiff_t n) const { return _Bit_const_iterator(data, offset - n); }
     std::ptrdiff_t operator-(const _Bit_const_iterator& rhs) const { return offset - rhs.offset; }
 
-    _Bit_reference operator[](std::ptrdiff_t n) const { return *(*this + n); }
+    bool operator[](std::ptrdiff_t n) const { return *(*this + n); }
 
     bool operator==(const _Bit_const_iterator& rhs) const = default;
-    auto operator<=>(const _Bit_const_iterator& rhs) const = default;
-    friend bool operator==(const _Bit_const_iterator& lhs, const _Bit_iterator& rhs) noexcept { return lhs == static_cast<_Bit_const_iterator>(rhs); }
-    friend auto operator<=>(const _Bit_const_iterator& lhs, const _Bit_iterator& rhs) noexcept { return lhs <=> static_cast<_Bit_const_iterator>(rhs); }
+    std::strong_ordering operator<=>(const _Bit_const_iterator& rhs) const = default;
+
+    friend bool operator==(const _Bit_const_iterator& lhs, const _Bit_iterator& rhs) noexcept;
+    friend std::strong_ordering operator<=>(const _Bit_const_iterator& lhs, const _Bit_iterator& rhs) noexcept;
 };
+
+
+_Bit_iterator::_Bit_iterator(const _Bit_const_iterator& other) noexcept : data(const_cast<unsigned long long*>(other.data)), offset(other.offset) {}
+bool operator==(const _Bit_iterator& lhs, const _Bit_const_iterator& rhs) noexcept { return lhs == static_cast<_Bit_iterator>(rhs); }
+std::strong_ordering operator<=>(const _Bit_iterator& lhs, const _Bit_const_iterator& rhs) noexcept { return lhs <=> static_cast<_Bit_iterator>(rhs); }
+_Bit_const_iterator::_Bit_const_iterator(const _Bit_iterator& other) noexcept : data(other.data), offset(other.offset) {}
+bool operator==(const _Bit_const_iterator& lhs, const _Bit_iterator& rhs) noexcept { return lhs == static_cast<_Bit_const_iterator>(rhs); }
+std::strong_ordering operator<=>(const _Bit_const_iterator& lhs, const _Bit_iterator& rhs) noexcept { return lhs <=> static_cast<_Bit_const_iterator>(rhs); }
 
 
 template<class Allocator>
@@ -774,11 +795,11 @@ public:
     static constexpr std::size_t word_bit = sizeof(unsigned long long) * CHAR_BIT;
 
 private:
-    vector<unsigned long long, std::allocator_traits<Allocator>::rebind_alloc<unsigned long long>> elems;
+    vector<unsigned long long, std::allocator<unsigned long long>> elems;
     std::size_t sz;
     static constexpr std::size_t word_index(std::size_t pos) noexcept { return pos / word_bit; }
     static constexpr std::size_t bit_index(std::size_t pos) noexcept { return pos % word_bit; }
-    static constexpr unsigned long long bit_mask(std::size_t pos) noexcept { return 1 << bit_index(pos); }
+    static constexpr unsigned long long bit_mask(std::size_t pos) noexcept { return 1ULL << bit_index(pos); }
 
 public:
     constexpr vector() noexcept(noexcept(Allocator())) : elems(), sz(0) {}
@@ -789,9 +810,9 @@ public:
 
     constexpr vector(std::size_t count, const bool& value, const Allocator& alloc_ = Allocator()) : elems((count + word_bit - 1) / word_bit, alloc_), sz(count) {
         if (value) {
-            std::fill(elems.begin(), elems.end(), ~unsigned long long(0));
+            std::fill(elems.begin(), elems.end(), ~0ULL);
             std::size_t last_bits = bit_index(sz);
-            if (last_bits != 0) elems.back() &= (1 << last_bits) - 1;
+            if (last_bits != 0) elems.back() &= (1ULL << last_bits) - 1;
         }
     }
 
@@ -832,10 +853,10 @@ public:
 
     constexpr void assign(std::size_t count, const bool& value) {
         if (value) {
-            elems.assign((count + word_bit - 1) / word_bit, ~unsigned long long(0));
+            elems.assign((count + word_bit - 1) / word_bit, ~0ULL);
             std::size_t last_bits = bit_index(count);
-            if (last_bits != 0) elems.back() &= (1 << last_bits) - 1;
-        } else elems.assign((count + word_bit - 1) / word_bit, unsigned long long(0));
+            if (last_bits != 0) elems.back() &= (1ULL << last_bits) - 1;
+        } else elems.assign((count + word_bit - 1) / word_bit, 0ULL);
         sz = count;
     }
 
@@ -876,9 +897,6 @@ public:
     constexpr reference back() { return (*this)[sz - 1]; }
     constexpr bool back() const { return (*this)[sz - 1]; }
 
-    constexpr unsigned long long* data() noexcept { return elems.data(); } // delete
-    constexpr const unsigned long long* data() const noexcept { return elems.data(); } // delete
-
     constexpr iterator begin() noexcept { return iterator(elems.data(), 0); }
     constexpr const_iterator begin() const noexcept { return const_iterator(elems.data(), 0); }
     constexpr const_iterator cbegin() const noexcept { return const_iterator(elems.data(), 0); }
@@ -917,7 +935,7 @@ public:
             push_back(value);
             return iterator(elems.data(), index);
         }
-        if (sz % word_bit == 0) elems.push_back(unsigned long long(0));
+        if (sz % word_bit == 0) elems.push_back(0ULL);
         ++sz;
         std::size_t w = word_index(index);
         std::size_t b = bit_index(index);
@@ -925,13 +943,14 @@ public:
             *i = (*i << 1) | (*(i - 1) >> (word_bit - 1));
         }
         if (b != 0) {
-            unsigned long long mask = (1 << b) - 1;
+            unsigned long long mask = (1ULL << b) - 1;
             elems[w] = (elems[w] & mask) | ((elems[w] & ~mask) << 1);
         } else elems[w] <<= 1;
-        if (value) elems[w] |= (1 << b);
-        else elems[w] &= ~(1 << b);
+        if (value) elems[w] |= (1ULL << b);
+        else elems[w] &= ~(1ULL << b);
         unsigned long long last_bits = bit_index(sz);
-        if (last_bits != 0) elems.back() &= (1 << last_bits) - 1;
+        if (last_bits != 0) elems.back() &= (1ULL << last_bits) - 1;
+        else elems.pop_back();
         return iterator(elems.data(), index);
     }
 
@@ -951,12 +970,12 @@ public:
             std::size_t eb = bit_index(new_sz);
             if (value) {
                 if (sw == ew) {
-                    elems[sw] |= ~((sb == 0) ? unsigned long long(0) : ((1 << sb) - 1)) & ((1 << eb) - 1);
-                    if (eb != 0) elems[sw] &= (1 << eb) - 1;
+                    elems[sw] |= ~((sb == 0) ? 0ULL : ((1ULL << sb) - 1)) & ((1ULL << eb) - 1);
+                    if (eb != 0) elems[sw] &= (1ULL << eb) - 1;
                 } else {
-                    elems[sw] |= ~((1 << sb) - 1);
-                    for (std::size_t w = sw + 1; w < ew; ++w) elems[w] = ~unsigned long long(0);
-                    if (eb != 0) elems[ew] |= (1 << eb) - 1;
+                    elems[sw] |= ~((1ULL << sb) - 1);
+                    for (std::size_t w = sw + 1; w < ew; ++w) elems[w] = ~0ULL;
+                    if (eb != 0) elems[ew] |= (1ULL << eb) - 1;
                 }
             }
             sz = new_sz;
@@ -969,19 +988,19 @@ public:
         std::size_t eb = bit_index(end_bit);
         std::size_t word_diff = ew - sw;
         std::ptrdiff_t bit_diff = eb - sb;
-        if (bit_diff == 0) std::memmove(static_cast<void*>(&elems[ew]), static_cast<const void*>(&elems[sw]), ((sz + word_bit - 1) / word_bit - sw) * sizeof(unsigned long long));
+        if (bit_diff == 0) std::memmove(&elems[ew], &elems[sw], ((sz + word_bit - 1) / word_bit - sw) * sizeof(unsigned long long));
         else if (bit_diff > 0) {
             if (word_diff != 0) {
                 for (auto i = elems.end() - 1; i > elems.begin() + ew; --i) {
                     *i = (*(i - word_diff) << bit_diff) | (*(i - word_diff - 1) >> (word_bit - bit_diff));
                 }
                 elems[ew] = elems[sw] << bit_diff;
-                elems[sw] &= (sb == 0) ? unsigned long long(0) : ((1 << sb) - 1);
+                elems[sw] &= (sb == 0) ? 0ULL : ((1ULL << sb) - 1);
             } else {
                 for (auto i = elems.end() - 1; i > elems.begin() + ew; --i) {
                     *i = (*i << bit_diff) | (*(i - 1) >> (word_bit - bit_diff));
                 }
-                unsigned long long mask = (sb == 0) ? unsigned long long(0) : ((1 << sb) - 1);
+                unsigned long long mask = (sb == 0) ? 0ULL : ((1ULL << sb) - 1);
                 elems[sw] = (elems[sw] & mask) | ((elems[sw] & ~mask) << bit_diff);
             }
         } else {
@@ -989,26 +1008,26 @@ public:
             for (auto i = elems.end() - 1; i >= elems.begin() + ew; --i) {
                 *i = (*(i - word_diff) >> rshift) | (*(i - word_diff + 1) << (word_bit - rshift));
             }
-            elems[sw] &= (sb == 0) ? unsigned long long(0) : ((1 << sb) - 1);
+            elems[sw] &= (sb == 0) ? 0ULL : ((1ULL << sb) - 1);
         }
         if (value) {
             if (word_diff == 0) {
-                elems[sw] |= ~((sb == 0) ? unsigned long long(0) : (1 << sb) - 1) & ((1 << eb) - 1);
+                elems[sw] |= ~((sb == 0) ? 0ULL : (1ULL << sb) - 1) & ((1ULL << eb) - 1);
             } else {
-                elems[sw] |= ~((1 << sb) - 1);
-                for (std::size_t w = sw + 1; w < ew; ++w) elems[w] = ~unsigned long long(0);
-                if (eb != 0) elems[ew] |= (1 << eb) - 1;
+                elems[sw] |= ~((1ULL << sb) - 1);
+                for (std::size_t w = sw + 1; w < ew; ++w) elems[w] = ~0ULL;
+                if (eb != 0) elems[ew] |= (1ULL << eb) - 1;
             }
         } else {
-            elems[sw] &= (sb == 0) ? unsigned long long(0) : ((1 << sb) - 1);
+            elems[sw] &= (sb == 0) ? 0ULL : ((1ULL << sb) - 1);
             if (sw != ew) {
-               for (std::size_t w = sw + 1; w < ew; ++w) elems[w] = unsigned long long(0);
-               if (eb != 0) elems[ew] &= ~((1 << eb) - 1);
+               for (std::size_t w = sw + 1; w < ew; ++w) elems[w] = 0ULL;
+               if (eb != 0) elems[ew] &= ~((1ULL << eb) - 1);
             }
         }
         sz = new_sz;
         unsigned long long last_bits = bit_index(sz);
-        if (last_bits != 0) elems.back() &= (1 << last_bits) - 1;
+        if (last_bits != 0) elems.back() &= (1ULL << last_bits) - 1;
         return iterator(elems.data(), index);
     }
 
@@ -1053,22 +1072,20 @@ public:
         --sz;
         std::size_t last_bits = bit_index(sz);
         if (index == sz) {
-            if (last_bits != 0) elems.back() &= (1 << last_bits) - 1;
-            else elems.pop_back();
+            pop_back();
             return iterator(elems.data(), index);
         }
         std::size_t w = word_index(index);
         std::size_t b = bit_index(index);
         if (b != 0) {
-            elems[w] = (elems[w] & ((1 << b) - 1)) | ((elems[w] & ~((1 << (b + 1)) - 1)) >> 1);
+            elems[w] = (elems[w] & ((1ULL << b) - 1)) | ((elems[w] & ~((1ULL << (b + 1)) - 1)) >> 1);
         } else elems[w] >>= 1;
-        elems[w] |= (elems[w + 1] & 1) << (word_bit - 1);
+        if (w + 1 < elems.size()) elems[w] |= (elems[w + 1] & 1) << (word_bit - 1);
         for (auto i = elems.begin() + w + 1; i < elems.end() - 1; ++i) {
-            *i >>= 1;
-            *i |= (*(i + 1) & 1) << (word_bit - 1);
+            *i = (*i >> 1) | (*(i + 1) & 1) << (word_bit - 1);
         }
-        *(elems.end() - 1) >>= 1;
-        if (last_bits != 0) elems.back() &= (1 << last_bits) - 1;
+        if (w < elems.size() - 1) *(elems.end() - 1) >>= 1;
+        if (last_bits != 0) elems.back() &= (1ULL << last_bits) - 1;
         else elems.pop_back();
         return iterator(elems.data(), index);
     }
@@ -1090,7 +1107,7 @@ public:
         std::size_t last_word = word_index(sz - 1);
         std::size_t last_bits = bit_index(sz);
         if (index == sz) {
-            if (last_bits != 0) elems[last_word] &= (1 << last_bits) - 1;
+            if (last_bits != 0) elems[last_word] &= (1ULL << last_bits) - 1;
             if (elems.size() > last_word + 1) elems.resize(last_word + 1);
             return iterator(elems.data(), index);
         }
@@ -1099,18 +1116,18 @@ public:
         std::size_t bit_left  = count % word_bit;
         if (bit_left == b) {
             if (b != 0) {
-                elems[w] = (elems[w] & ((1 << b) - 1)) | (elems[w + word_diff] & ~((1 << b) - 1));
-                if (w + word_diff + 1 < elems.size()) std::memmove(static_cast<void*>(&elems[w + 1]), static_cast<const void*>(&elems[w + word_diff + 1]), (elems.size() - w - word_diff - 1) * sizeof(unsigned long long));
-            } else std::memmove(static_cast<void*>(&elems[w]), static_cast<const void*>(&elems[w + word_diff]), (elems.size() - w - word_diff) * sizeof(unsigned long long));
+                elems[w] = (elems[w] & ((1ULL << b) - 1)) | (elems[w + word_diff] & ~((1ULL << b) - 1));
+                if (w + word_diff + 1 < elems.size()) std::memmove(&elems[w + 1], &elems[w + word_diff + 1], (elems.size() - w - word_diff - 1) * sizeof(unsigned long long));
+            } else std::memmove(&elems[w], &elems[w + word_diff], (elems.size() - w - word_diff) * sizeof(unsigned long long));
         } else if (bit_left < b) {
             std::size_t bit_diff = b - bit_left;
-            elems[w] = (elems[w] & ((1 << b) - 1)) | ((elems[w + word_diff] & ~((1 << bit_left) - 1)) << bit_diff);
+            elems[w] = (elems[w] & ((1ULL << b) - 1)) | ((elems[w + word_diff] & ~((1ULL << bit_left) - 1)) << bit_diff);
             for (auto i = elems.begin() + w + 1; i <= elems.begin() + last_word; ++i) {
                 *i = (*(i + word_diff - 1) >> (word_bit - bit_diff)) | (*(i + word_diff) << bit_diff);
             }
         } else {
             std::size_t bit_diff = bit_left - b;
-            elems[w] = (elems[w] & (((b == 0) ? unsigned long long(0) : (1 << b)) - 1)) | ((elems[w + word_diff] & ~((1 << bit_left) - 1)) >> bit_diff);
+            elems[w] = (elems[w] & (((b == 0) ? 0ULL : (1ULL << b)) - 1)) | ((elems[w + word_diff] & ~((1ULL << bit_left) - 1)) >> bit_diff);
             if (w + word_diff + 1 < elems.size()) elems[w] |= elems[w + word_diff + 1] << (word_bit - bit_diff);
             for (auto i = elems.begin() + w + 1; i < elems.begin() + last_word; ++i) {
                 *i = (*(i + word_diff) >> bit_diff) | (*(i + word_diff + 1) << (word_bit - bit_diff));
@@ -1120,7 +1137,7 @@ public:
                 elems[last_word] |= elems[last_word + word_diff + 1] << (word_bit - bit_diff);
             }
         }
-        if (last_bits != 0) elems[last_word] &= (1 << last_bits) - 1;
+        if (last_bits != 0) elems[last_word] &= (1ULL << last_bits) - 1;
         if (elems.size() > last_word + 1) elems.resize(last_word + 1);
         return iterator(elems.data(), index);
     }
@@ -1128,8 +1145,8 @@ public:
     constexpr void push_back(const bool& value) {
         if (sz == capacity()) reserve(sz ? sz * _MYSTD_VECTOR_GROW : 1);
         std::size_t b = bit_index(sz);
-        if (b == 0) elems.push_back(unsigned long long(0));
-        if (value) elems.back() |= 1 << b;
+        if (b == 0) elems.push_back(0ULL);
+        if (value) elems.back() |= 1ULL << b;
         ++sz;
     }
 
@@ -1156,13 +1173,13 @@ public:
 
     constexpr void resize(std::size_t new_size, const bool& value) {
         if (value) {
-            elems.resize((new_size + word_bit - 1) / word_bit, ~unsigned long long(0));
+            elems.resize((new_size + word_bit - 1) / word_bit, ~0ULL);
             if (new_size > sz) {
                 std::size_t last_bits = bit_index(sz);
-                if (last_bits != 0) elems[word_index(sz)] |= ~((1 << last_bits) - 1);
+                if (last_bits != 0) elems[word_index(sz)] |= ~((1ULL << last_bits) - 1);
             }
             std::size_t last_bits = bit_index(new_size);
-            if (last_bits != 0) elems.back() &= (1 << last_bits) - 1;
+            if (last_bits != 0) elems.back() &= (1ULL << last_bits) - 1;
             sz = new_size;
         } else resize(new_size);
     }
@@ -1176,7 +1193,7 @@ public:
         if (sz == 0) return;
         for (auto& word : elems) word = ~word;
         std::size_t last_bits = bit_index(sz);
-        if (last_bits != 0) elems.back() &= (1 << last_bits) - 1;
+        if (last_bits != 0) elems.back() &= (1ULL << last_bits) - 1;
     }
 
     static constexpr void swap(reference x, reference y) {
@@ -1190,6 +1207,7 @@ public:
 };
 
 }
+
 
 namespace std {
 
