@@ -680,7 +680,7 @@ public:
     using difference_type = std::ptrdiff_t;
     using value_type = bool;
     using pointer = _Bit_pointer;
-    using _Bit_reference = _Bit_reference;
+    using reference = _Bit_reference;
     using iterator_category = std::random_access_iterator_tag;
 
     _Bit_iterator() = default;
@@ -720,7 +720,7 @@ public:
     using difference_type = std::ptrdiff_t;
     using value_type = bool;
     using pointer = void;
-    using _Bit_reference = bool;
+    using reference = bool;
     using iterator_category = std::random_access_iterator_tag;
 
     _Bit_const_iterator() = default;
