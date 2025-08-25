@@ -87,8 +87,7 @@ public:
             if (count > 0) {
                 elems = std::allocator_traits<Allocator>::allocate(alloc, count);
                 sz = cap = count;
-                if constexpr (std::is_trivially_copyable_v<T> && std::contiguous_iterator<InputIt>)
-                    std::memmove(elems, &*first, count * sizeof(T));
+                if constexpr (std::is_trivially_copyable_v<T> && std::contiguous_iterator<InputIt>) std::memmove(elems, &*first, count * sizeof(T));
                 else {
                     T* p = elems;
                     try { for (; first != last; ++first, ++p) std::allocator_traits<Allocator>::construct(alloc, p, *first); }
