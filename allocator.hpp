@@ -19,11 +19,11 @@ struct allocator {
     constexpr allocator() noexcept = default;
     constexpr allocator(const allocator& other) noexcept = default;
     template<class U>
-    constexpr allocator(const allocator<U>& other) noexcept = default;
+    constexpr allocator(const allocator<U>& other) noexcept {};
     constexpr ~allocator() = default;
 
     [[nodiscard]] constexpr T* allocate(std::size_t n) {
-        if constexpr (std::numeric_limits<std::size_t>::max() / sizeof(T) < n) {
+        if (std::numeric_limits<std::size_t>::max() / sizeof(T) < n) {
             throw std::bad_array_new_length{};
         }
         return static_cast<T*>(::operator new(n * sizeof(T)));
@@ -63,21 +63,21 @@ public:
     using pointer = typename pointer_helper<Alloc>::type;
 
 private:
-    template <typename A, typename = void> struct const_pointer_helper { using type = std::pointer_traits<pointer>::rebind<const value_type>; };
+    template <typename A, typename = void> struct const_pointer_helper { using type = typename std::pointer_traits<pointer>::rebind<const value_type>; };
     template <typename A> struct const_pointer_helper<A, std::void_t<typename A::const_pointer>> { using type = typename A::const_pointer; };
 
 public:
     using const_pointer = typename const_pointer_helper<Alloc>::type;
 
 private:
-    template <typename A, typename = void> struct void_pointer_helper { using type = std::pointer_traits<pointer>::rebind<void>; };
+    template <typename A, typename = void> struct void_pointer_helper { using type = typename std::pointer_traits<pointer>::rebind<void>; };
     template <typename A> struct void_pointer_helper<A, std::void_t<typename A::void_pointer>> { using type = typename A::void_pointer; };
 
 public:
     using void_pointer = typename void_pointer_helper<Alloc>::type;
 
 private:
-    template <typename A, typename = void> struct const_void_pointer_helper { using type = std::pointer_traits<pointer>::rebind<const void>; };
+    template <typename A, typename = void> struct const_void_pointer_helper { using type = typename std::pointer_traits<pointer>::rebind<const void>; };
     template <typename A> struct const_void_pointer_helper<A, std::void_t<typename A::const_void_pointer>> { using type = typename A::const_void_pointer; };
 
 public:
