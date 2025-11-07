@@ -1,7 +1,7 @@
 #pragma once // vector.hpp
 
 #ifndef _MYSTD_VECTOR_GROW
-#define _MYSTD_VECTOR_GROW 1.5
+#define _MYSTD_VECTOR_GROW 2
 #endif
 
 #include <algorithm>
@@ -665,9 +665,11 @@ constexpr typename mystd::vector<T, Allocator>::size_type erase_if(mystd::vector
     return count;
 }
 
+} // namespace std
+
 namespace mystd {
 
-template<class InputIt, class Allocator = mystd::allocator<typename std::iterator_traits<InputIt>::value_type>>
+template<class InputIt, class Allocator = allocator<typename std::iterator_traits<InputIt>::value_type>>
 vector(InputIt, InputIt, Allocator = Allocator()) -> vector<typename std::iterator_traits<InputIt>::value_type, Allocator>;
 
 } // namespace mystd
