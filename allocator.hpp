@@ -1,4 +1,4 @@
-#pragma once
+#pragma once // allocator.hpp
 
 #include <cstddef>
 #include <type_traits>
@@ -32,11 +32,10 @@ struct allocator {
     constexpr void deallocate(T* p, std::size_t) noexcept {
         ::operator delete(p);
     }
-
-    template< class T1, class T2 >
-    constexpr bool operator==(const allocator<T1>& lhs, const allocator<T2>& rhs) noexcept { return true; }
 };
 
+template< class T1, class T2 >
+constexpr bool operator==(const allocator<T1>& lhs, const allocator<T2>& rhs) noexcept { return true; }
 
 template<typename Alloc, typename T, typename = void>
 struct __rebind_helper { };
@@ -207,5 +206,5 @@ public:
     }
 };
 
-}
+} // namespace mystd
 

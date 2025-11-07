@@ -1,4 +1,4 @@
-#pragma once
+#pragma once // vector.hpp
 
 #ifndef _MYSTD_VECTOR_GROW
 #define _MYSTD_VECTOR_GROW 2
@@ -18,7 +18,7 @@
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
-#include "memory.hpp"
+#include "allocator.hpp"
 
 namespace mystd {
 
@@ -628,9 +628,6 @@ public:
 };
 
 
-template<class InputIt, class Allocator = mystd::allocator<typename std::iterator_traits<InputIt>::value_type>>
-vector(InputIt, InputIt, Allocator = Allocator()) -> vector<typename std::iterator_traits<InputIt>::value_type, Allocator>;
-
 namespace pmr {
     template<class T>
     using vector = vector<T, std::pmr::polymorphic_allocator<T>>;
@@ -668,4 +665,8 @@ constexpr typename mystd::vector<T, Allocator>::size_type erase_if(mystd::vector
     return count;
 }
 
-}
+template<class InputIt, class Allocator = mystd::allocator<typename std::iterator_traits<InputIt>::value_type>>
+vector(InputIt, InputIt, Allocator = Allocator()) -> vector<typename std::iterator_traits<InputIt>::value_type, Allocator>;
+
+} // namespace mystd
+
