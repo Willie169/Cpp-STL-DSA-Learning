@@ -1,10 +1,11 @@
 #pragma once // allocator.hpp
 
 #include <cstddef>
+#include <limits>
+#include <new>
 #include <type_traits>
 #include <memory>
 #include <utility>
-#include <limits>
 
 namespace mystd {
 
@@ -63,21 +64,21 @@ public:
     using pointer = typename pointer_helper<Alloc>::type;
 
 private:
-    template <typename A, typename = void> struct const_pointer_helper { using type = typename std::pointer_traits<pointer>::rebind<const value_type>; };
+    template <typename A, typename = void> struct const_pointer_helper { using type = typename std::pointer_traits<pointer>::template rebind<const value_type>; };
     template <typename A> struct const_pointer_helper<A, std::void_t<typename A::const_pointer>> { using type = typename A::const_pointer; };
 
 public:
     using const_pointer = typename const_pointer_helper<Alloc>::type;
 
 private:
-    template <typename A, typename = void> struct void_pointer_helper { using type = typename std::pointer_traits<pointer>::rebind<void>; };
+    template <typename A, typename = void> struct void_pointer_helper { using type = typename std::pointer_traits<pointer>::template rebind<void>; };
     template <typename A> struct void_pointer_helper<A, std::void_t<typename A::void_pointer>> { using type = typename A::void_pointer; };
 
 public:
     using void_pointer = typename void_pointer_helper<Alloc>::type;
 
 private:
-    template <typename A, typename = void> struct const_void_pointer_helper { using type = typename std::pointer_traits<pointer>::rebind<const void>; };
+    template <typename A, typename = void> struct const_void_pointer_helper { using type = typename std::pointer_traits<pointer>::template rebind<const void>; };
     template <typename A> struct const_void_pointer_helper<A, std::void_t<typename A::const_void_pointer>> { using type = typename A::const_void_pointer; };
 
 public:

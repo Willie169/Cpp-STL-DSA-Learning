@@ -5,18 +5,14 @@
 #endif
 
 #include <algorithm>
-#include <climits>
-#include <compare>
 #include <cstddef>
 #include <cstring>
 #include <functional>
+#include <limits>
 #include <initializer_list>
 #include <iterator>
-#include <limits>
 #include <memory>
-#include <memory_resource>
 #include <stdexcept>
-#include <type_traits>
 #include <utility>
 #include "allocator.hpp"
 

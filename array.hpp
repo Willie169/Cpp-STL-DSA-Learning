@@ -1,10 +1,12 @@
-#pragma once
+#pragma once // array.hpp
 
 #include <algorithm>
 #include <compare>
 #include <cstddef>
+#include <functional>
 #include <iterator>
 #include <stdexcept>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -78,7 +80,7 @@ array(T, U...) -> array<T, 1 + sizeof...(U)>;
 template<class T>
 constexpr std::size_t tuple_size_v = std::tuple_size<T>::value;
 
-}
+} // namespace mystd
 
 template<class T, std::size_t N>
 constexpr bool operator==(const mystd::array<T, N>& lhs, const mystd::array<T, N>& rhs) { return std::equal(lhs.begin(), lhs.end(), rhs.begin()); }
@@ -116,5 +118,5 @@ struct tuple_size<mystd::array<T, N>> : integral_constant<std::size_t, N> {};
 template<std::size_t I, class T, std::size_t N>
 struct tuple_element<I, mystd::array<T, N>> { using type = T; };
 
-}
+} // namespace std
 
