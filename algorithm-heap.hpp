@@ -173,10 +173,10 @@ constexpr bool is_heap( It first, It last ) {
     for ( diff_t i = 0; i <= ( size - 2 ) / 2; ++i ) {
         diff_t left = 2 * i + 1;
         diff_t right = 2 * i + 2;
-        if ( left < size && std::less<>{}( *( first + i ), *( first + left ) ) == false ) {
+        if ( left < size && std::less<>{}( *( first + i ), *( first + left ) ) ) {
             return false;
         }
-        if ( right < size && std::less<>{}( *( first + i ), *( first + right ) ) == false ) {
+        if ( right < size && std::less<>{}( *( first + i ), *( first + right ) ) ) {
             return false;
         }
     }
@@ -196,10 +196,10 @@ constexpr bool is_heap( It first, It last, Comp comp ) {
     for ( diff_t i = 0; i <= ( size - 2 ) / 2; ++i ) {
         diff_t left = 2 * i + 1;
         diff_t right = 2 * i + 2;
-        if ( left < size && comp( *( first + i ), *( first + left ) ) == false ) {
+        if ( left < size && comp( *( first + i ), *( first + left ) ) ) {
             return false;
         }
-        if ( right < size && comp( *( first + i ), *( first + right ) ) == false ) {
+        if ( right < size && comp( *( first + i ), *( first + right ) ) ) {
             return false;
         }
     }
@@ -219,10 +219,10 @@ constexpr It is_heap_until( It first, It last ) {
     for ( diff_t i = 0; i <= ( size - 2 ) / 2; ++i ) {
         diff_t left = 2 * i + 1;
         diff_t right = 2 * i + 2;
-        if ( left < size && std::less<>{}( *( first + i ), *( first + left ) ) == false ) {
+        if ( left < size && std::less<>{}( *( first + i ), *( first + left ) ) ) {
             return first + left;
         }
-        if ( right < size && std::less<>{}( *( first + i ), *( first + right ) ) == false ) {
+        if ( right < size && std::less<>{}( *( first + i ), *( first + right ) ) ) {
             return first + right;
         }
     }
@@ -242,10 +242,10 @@ constexpr It is_heap_until( It first, It last, Comp comp ) {
     for ( diff_t i = 0; i <= ( size - 2 ) / 2; ++i ) {
         diff_t left = 2 * i + 1;
         diff_t right = 2 * i + 2;
-        if ( left < size && comp( *( first + i ), *( first + left ) ) == false ) {
+        if ( left < size && comp( *( first + i ), *( first + left ) ) ) {
             return first + left;
         }
-        if ( right < size && comp( *( first + i ), *( first + right ) ) == false ) {
+        if ( right < size && comp( *( first + i ), *( first + right ) ) ) {
             return first + right;
         }
     }

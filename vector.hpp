@@ -1,7 +1,7 @@
 #pragma once // vector.hpp
 
 #ifndef _MYSTD_VECTOR_GROW
-#define _MYSTD_VECTOR_GROW 2
+#define _MYSTD_VECTOR_GROW 1.5
 #endif
 
 #include <algorithm>
@@ -633,7 +633,7 @@ namespace pmr {
     using vector = vector<T, std::pmr::polymorphic_allocator<T>>;
 }
 
-}
+} // namespace mystd
 
 template<class T, class Allocator>
 constexpr bool operator==(const mystd::vector<T, Allocator>& lhs, const mystd::vector<T, Allocator>& rhs) {
@@ -664,6 +664,8 @@ constexpr typename mystd::vector<T, Allocator>::size_type erase_if(mystd::vector
     c.erase(it, c.end());
     return count;
 }
+
+namespace mystd {
 
 template<class InputIt, class Allocator = mystd::allocator<typename std::iterator_traits<InputIt>::value_type>>
 vector(InputIt, InputIt, Allocator = Allocator()) -> vector<typename std::iterator_traits<InputIt>::value_type, Allocator>;

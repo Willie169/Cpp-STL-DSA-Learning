@@ -194,6 +194,7 @@ namespace std {
 
 template< class T, class Container, class Compare, class Alloc >
 requires std::predicate<Compare, const T&, const T&>
-struct uses_allocator<mystd::priority_queue<T, Compare, Container>, Alloc> : std::uses_allocator<Container, Alloc>::type {};
+struct uses_allocator<mystd::priority_queue<T, Compare, Container>, Alloc> : std::uses_allocator<Container, Alloc> {};
 
 } // namespace std
+
