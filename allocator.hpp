@@ -207,5 +207,14 @@ public:
     }
 };
 
+template<class T, class Alloc, class = void>
+struct uses_allocator : std::false_type {};
+
+template<class T, class Alloc>
+struct uses_allocator<T, Alloc, std::void_t<typename T::allocator_type>> : std::bool_constant<std::is_convertible_v<Alloc, typename T::allocator_type>> {};
+
+template< class T, class Alloc >
+constexpr bool uses_allocator_v = uses_allocator<T, Alloc>::value;
+
 } // namespace mystd
 

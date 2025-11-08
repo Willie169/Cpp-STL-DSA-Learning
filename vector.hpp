@@ -5,6 +5,7 @@
 #endif
 
 #include <algorithm>
+#include <compare>
 #include <cstddef>
 #include <cstring>
 #include <functional>
@@ -15,6 +16,7 @@
 #include <stdexcept>
 #include <utility>
 #include "allocator.hpp"
+#include "range-access.hpp"
 
 namespace mystd {
 

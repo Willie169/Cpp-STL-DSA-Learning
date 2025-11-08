@@ -1,10 +1,14 @@
 #pragma once // priority_queue.hpp
 
+#include <compare>
 #include <concepts>
+#include <cstddef>
 #include <functional>
+#include <initializer_list>
 #include <iterator>
 #include <memory>
 #include <utility>
+#include <type_traits>
 #include "algorithm-heap.hpp"
 #include "vector.hpp"
 
@@ -169,12 +173,6 @@ public:
     }
 };
 
-template< class T, class Container, class Compare >
-requires std::predicate<Compare, const T&, const T&>
-void swap( mystd::priority_queue<T, Container, Compare>& lhs, mystd::priority_queue<T, Container, Compare>& rhs ) noexcept( noexcept(lhs.swap(rhs)) ) {
-    lhs.swap(rhs);
-}
-
 template< class Comp, class Container >
 priority_queue( Comp, Container ) -> priority_queue<typename Container::value_type, Container, Comp>;
 
@@ -193,13 +191,19 @@ priority_queue( InputIt, InputIt, Comp, Alloc ) -> priority_queue<typename std::
 template< std::input_iterator InputIt, class Comp, class Container, class Alloc >
 priority_queue( InputIt, InputIt, Comp, Container, Alloc ) -> priority_queue<typename Container::value_type, Container, Comp>;
 
+template< class T, class Container, class Compare, class Alloc >
+requires std::predicate<Compare, const T&, const T&>
+struct uses_allocator<mystd::priority_queue<T, Compare, Container>, Alloc> : std::uses_allocator<Container, Alloc> {};
+
 } // namespace mystd
 
 namespace std {
 
-template< class T, class Container, class Compare, class Alloc >
+template< class T, class Container, class Compare >
 requires std::predicate<Compare, const T&, const T&>
-struct uses_allocator<mystd::priority_queue<T, Compare, Container>, Alloc> : std::uses_allocator<Container, Alloc> {};
+constexpr void swap( mystd::priority_queue<T, Container, Compare>& lhs, mystd::priority_queue<T, Container, Compare>& rhs ) noexcept( noexcept(lhs.swap(rhs)) ) {
+    lhs.swap(rhs);
+}
 
 } // namespace std
 

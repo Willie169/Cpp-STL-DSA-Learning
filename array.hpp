@@ -4,11 +4,14 @@
 #include <compare>
 #include <cstddef>
 #include <functional>
+#include <initializer_list>
 #include <iterator>
 #include <stdexcept>
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include "range-access.hpp"
+#include "tuple_size.hpp"
 
 namespace mystd {
 
@@ -76,9 +79,6 @@ struct array {
 
 template<class T, class... U>
 array(T, U...) -> array<T, 1 + sizeof...(U)>;
-
-template<class T>
-constexpr std::size_t tuple_size_v = std::tuple_size<T>::value;
 
 } // namespace mystd
 
